@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <cstring>
 
 namespace ssd1306 {
 
@@ -28,6 +29,7 @@ class Bitmap {
   void setPixel(int x, int y, bool white = true);
   bool getPixel(int x, int y) const;
   void fillRect(int x, int y, int w, int h, bool white = true);
+  void copyTo(const Bitmap& dst) const;
 };
 
 #ifdef SSD1306_IMPLEMENTATION
@@ -64,6 +66,10 @@ void Bitmap::fillRect(int x, int y, int w, int h, bool white) {
       setPixel(x + i, y + j, white);
     }
   }
+}
+
+void Bitmap::copyTo(const Bitmap& dst) const {
+  std::memcpy(dst.data, data, width * (height + 7) / 8);
 }
 
 #endif

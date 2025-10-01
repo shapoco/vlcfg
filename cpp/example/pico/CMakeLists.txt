@@ -37,7 +37,7 @@ target_include_directories(${APP_NAME} PRIVATE
 
 target_link_libraries(${APP_NAME} PRIVATE
     pico_stdlib
-#    pico_multicore
+    pico_multicore
     pico_cyw43_arch_lwip_threadsafe_background
 #    pico_lwip_http
 #    pico_lwip_mdns

@@ -134,13 +134,18 @@ void Display::setWindow(int x, int y, int w, int h) {
 }
 
 void Display::writePixels(const void* data, int length) {
+  //uint8_t firstByte = 0x40;
+  //i2c_write_burst_blocking(i2c, devAddr, &firstByte, 1);
+  //i2c_write_burst_blocking(i2c, devAddr, static_cast<const uint8_t*>(data),
+  //                         length);
+  //// force stop condition
+  //uint8_t dummy = 0;
+  //i2c_write_blocking(i2c, 0xFF, &dummy, 1, false);
+  
   uint8_t firstByte = 0x40;
   i2c_write_burst_blocking(i2c, devAddr, &firstByte, 1);
-  i2c_write_burst_blocking(i2c, devAddr, static_cast<const uint8_t*>(data),
-                           length);
-  // force stop condition
-  uint8_t dummy = 0;
-  i2c_write_blocking(i2c, 0xFF, &dummy, 1, false);
+  i2c_write_blocking(i2c, devAddr, static_cast<const uint8_t*>(data),
+                           length, false);
 }
 
 bool Display::i2cBusReset() {
@@ -156,12 +161,13 @@ bool Display::i2cBusReset() {
   // disable();
   // gpio::setPullup(sdaPort, true);
   // gpio::setPullup(sclPort, true);
-  //gpio::setDirMulti((1 << sdaPort) | (1 << sclPort), false);
-  //gpio::writeMulti((1 << sdaPort) | (1 << sclPort), 0);
+  // gpio::setDirMulti((1 << sdaPort) | (1 << sclPort), false);
+  // gpio::writeMulti((1 << sdaPort) | (1 << sclPort), 0);
   gpio_pull_up(sdaPort);
   gpio_pull_up(sclPort);
   gpio_set_dir_masked((1 << sdaPort) | (1 << sclPort), 0);
   gpio_put_masked((1 << sdaPort) | (1 << sclPort), 0);
+  sleep_us(50);
 
   bool success = false;
   if (gpio_get(sdaPort)) {
@@ -170,13 +176,13 @@ bool Display::i2cBusReset() {
   } else {
     for (int i = MAX_RETRIES; i != 0; i--) {
       // send SCL pulses until SDA is high
-      //gpio::setDir(sdaPort, false);
-      //gpio::setDir(sclPort, true);
+      // gpio::setDir(sdaPort, false);
+      // gpio::setDir(sclPort, true);
       gpio_set_dir(sdaPort, false);
       gpio_set_dir(sclPort, true);
       sleep_us(50);
       for (int j = MAX_SCL_PULSES; j != 0; j--) {
-        //gpio::setDir(sclPort, false);
+        // gpio::setDir(sclPort, false);
         gpio_set_dir(sclPort, false);
         sleep_us(50);
         gpio_set_dir(sclPort, true);
@@ -200,8 +206,8 @@ bool Display::i2cBusReset() {
     }
   }
 
-  gpio_set_function(sdaPort, GPIO_FUNC_I2C);
-  gpio_set_function(sclPort, GPIO_FUNC_I2C);
+  // gpio_set_function(sdaPort, GPIO_FUNC_I2C);
+  // gpio_set_function(sclPort, GPIO_FUNC_I2C);
 
   return success;
 }

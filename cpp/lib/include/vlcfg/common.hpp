@@ -11,36 +11,34 @@
 #define VLBS_RX_SAMPLES_PER_BIT (10)
 #endif
 
-#define VLCFG_SYMBOL_BITS (5)
-
 namespace vlcfg {
 
-static const uint32_t VLBS_RX_BIT_PERIOD_US = 1000000 / VLBS_RX_BAUDRATE;
-static const uint32_t VLBS_RX_SAMPLE_PERIOD_US =
-    VLBS_RX_BIT_PERIOD_US / VLBS_RX_SAMPLES_PER_BIT;
-static const uint16_t VLBS_ADC_AVE_PERIOD = VLBS_RX_SAMPLES_PER_BIT * 6 * 4;
+static constexpr uint8_t SYMBOL_BITS = 5;
 
-typedef enum : uint8_t {
-  VLBS_CDR_LOS,
-  VLBS_CDR_IDLE,
-  VLBS_CDR_RXED_0,
-  VLBS_CDR_RXED_1,
-} vlbs_cdr_state_t;
+static constexpr uint32_t RX_BIT_PERIOD_US = 1000000 / VLBS_RX_BAUDRATE;
+static constexpr uint32_t RX_SAMPLE_PERIOD_US =
+    RX_BIT_PERIOD_US / VLBS_RX_SAMPLES_PER_BIT;
 
-typedef enum : uint8_t {
-  VLBS_PCS_LOS,
-  VLBS_PCS_RXED_SYNC1,
-  VLBS_PCS_RXED_SYNC2,
-  VLBS_PCS_RXED_SYNC3,
-  VLBS_PCS_RXED_BYTE,
-  VLBS_PCS_ERROR,
-} vlbs_pcs_state_t;
+enum class PcsState : uint8_t {
+  LOS,
+  RXED_SYNC1,
+  RXED_SYNC2,
+  RXED_SYNC3,
+  RXED_BYTE,
+  ERROR,
+};
 
-typedef enum : int8_t {
-  VLBS_4B5B_SYM_IDLE0 = -1,
-  VLBS_4B5B_SYM_IDLE1 = -2,
-  VLBS_4B5B_SYM_BAD = -8,
-} vlbs_4b5b_symbol_t;
+struct CdrOutput {
+  bool signal_detected;
+  bool rxed;
+  bool rx_bit;
+};
+
+struct PcsOutput {
+  PcsState state;
+  bool rxed;
+  uint8_t rx_byte;
+};
 
 enum class Result : uint8_t {
   SUCCESS,
@@ -67,8 +65,8 @@ enum class CborMajorType : int8_t {
   INVALID = -1,
 };
 
-enum EntryFlags : uint8_t {
-  VLCFG_ENTRY_FLAG_DUMMY,
+enum ConfigEntryFlags : uint8_t {
+  NONE = 0,
 };
 
 struct ConfigEntry {
@@ -76,7 +74,7 @@ struct ConfigEntry {
   void* buffer;
   CborMajorType type;
   uint16_t max_size_in_bytes;
-  EntryFlags flags;
+  ConfigEntryFlags flags;
 };
 
 }  // namespace vlcfg
