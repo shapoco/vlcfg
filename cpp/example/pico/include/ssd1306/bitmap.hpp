@@ -29,6 +29,7 @@ class Bitmap {
   void setPixel(int x, int y, bool white = true);
   bool getPixel(int x, int y) const;
   void fillRect(int x, int y, int w, int h, bool white = true);
+  void drawRect(int x, int y, int w, int h, bool white) ;
   void copyTo(const Bitmap& dst) const;
 };
 
@@ -68,8 +69,15 @@ void Bitmap::fillRect(int x, int y, int w, int h, bool white) {
   }
 }
 
+void Bitmap::drawRect(int x, int y, int w, int h, bool white)  {
+  fillRect(x, y, w, 1, white);
+  fillRect(x, y + h - 1, w, 1, white);
+  fillRect(x, y, 1, h, white);
+  fillRect(x + w - 1, y, 1, h, white);
+}
+
 void Bitmap::copyTo(const Bitmap& dst) const {
-  std::memcpy(dst.data, data, width * (height + 7) / 8);
+  std::memcpy(dst.data, data, width * ((height + 7) / 8));
 }
 
 #endif

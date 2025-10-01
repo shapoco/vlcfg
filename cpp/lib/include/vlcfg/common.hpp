@@ -11,6 +11,20 @@
 #define VLBS_RX_SAMPLES_PER_BIT (10)
 #endif
 
+#define VLCFG_DEBUG
+#ifdef VLCFG_DEBUG
+#include <stdio.h>
+#define VLCFG_PRINTF(fmt, ...)  \
+  do {                          \
+    printf("[%s] ", __func__);  \
+    printf(fmt, ##__VA_ARGS__); \
+  } while (0)
+#else
+#define VLCFG_PRINTF(fmt, ...) \
+  do {                         \
+  } while (0)
+#endif
+
 namespace vlcfg {
 
 static constexpr uint8_t SYMBOL_BITS = 5;
@@ -23,9 +37,9 @@ enum class PcsState : uint8_t {
   LOS,
   RXED_SYNC1,
   RXED_SYNC2,
-  RXED_SYNC3,
+  RXED_SOF,
   RXED_BYTE,
-  ERROR,
+  RXED_EOF,
 };
 
 struct CdrOutput {
@@ -37,13 +51,12 @@ struct CdrOutput {
 struct PcsOutput {
   PcsState state;
   bool rxed;
-  uint8_t rx_byte;
+  int16_t rx_byte;
 };
 
 enum class Result : uint8_t {
   SUCCESS,
   ERR_OVERFLOW,
-  ERR_SYNTAX,
   ERR_TOO_MANY_ENTRIES,
   ERR_KEY_TYPE_MISMATCH,
   ERR_KEY_TOO_LONG,
@@ -51,6 +64,11 @@ enum class Result : uint8_t {
   ERR_VALUE_TYPE_MISMATCH,
   ERR_VALUE_TOO_LONG,
   ERR_NULL_POINTER,
+  ERR_LOS,
+  ERR_EOF_EXPECTED,
+  ERR_SYNTAX_UNEXPECTED_EOF,
+  ERR_SYNTAX_BAD_SHORT_COUNT,
+  ERR_SYNTAX_UNSUPPORTED_TYPE,
 };
 
 enum class CborMajorType : int8_t {

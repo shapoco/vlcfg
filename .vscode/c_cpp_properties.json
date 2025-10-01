@@ -50,6 +50,7 @@
             "defines": [
                 "BOARD_PICO_W",
                 "VLCFG_IMPLEMENTATION",
+                "VLCFG_DEBUG",
                 "SSD1306_IMPLEMENTATION"
             ],
             "compilerPath": "/usr/bin/gcc",

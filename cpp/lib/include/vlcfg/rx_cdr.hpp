@@ -12,14 +12,13 @@ static const uint8_t ADC_BITS = 12;
 class RxCdr {
   // todo: private:
  public:
+  uint8_t amp_det_count;
   bool amp_det;
   uint16_t sig_det_count;
   bool sig_det;
-  uint32_t adc_sum_value;
-  uint8_t adc_sum_count;
-  uint16_t adc_max_value;
-  uint16_t adc_min_value;
-  uint16_t adc_ave;
+  uint16_t peak_max;
+  uint16_t peak_min;
+  uint16_t threshold;
   uint8_t last_digital_level;
   uint8_t phase;
   uint8_t sample_phase;
@@ -28,7 +27,7 @@ class RxCdr {
  public:
   inline RxCdr() { init(); }
   void init();
-  void update(uint16_t adc_val, CdrOutput& out);
+  Result update(uint16_t adc_val, CdrOutput* out);
   inline bool signal_detected() const { return sig_det; }
 };
 
@@ -44,51 +43,40 @@ void RxCdr::init() {
   sig_det_count = 0;
   amp_det = false;
   sig_det = false;
-  adc_ave = 2048;
+  threshold = 2048;
   last_digital_level = false;
   phase = 0;
   sample_phase = PHASE_PERIOD * 3 / 4;
-  adc_min_value = 9999;
-  adc_max_value = 0;
+  peak_min = 9999;
+  peak_max = 0;
 }
 
 // clock data recovery
-void RxCdr::update(uint16_t adc_val, CdrOutput& out) {
-  out.rxed = false;
+Result RxCdr::update(uint16_t adc_val, CdrOutput* out) {
+  out->rxed = false;
 
-  adc_sum_count++;
-  bool sd_trig = (adc_sum_count >= ADC_AVE_PERIOD);
-  if (sd_trig) adc_sum_count = 0;
+  if (out == nullptr) return Result::ERR_NULL_POINTER;
 
-  if (adc_val > adc_max_value) adc_max_value = adc_val;
-  if (adc_val < adc_min_value) adc_min_value = adc_val;
-  if (sd_trig) {
-    amp_det = (adc_max_value - adc_min_value) >= (1 << (ADC_BITS - 6));
-    adc_max_value = adc_val;
-    adc_min_value = adc_val;
+  // amplitude detection
+  if (amp_det_count < ADC_AVE_PERIOD) {
+    amp_det_count++;
+    if (adc_val > peak_max) peak_max = adc_val;
+    if (adc_val < peak_min) peak_min = adc_val;
+  } else {
+    amp_det_count = 0;
+    amp_det = (peak_max - peak_min) >= (1 << (ADC_BITS - 6));
+    threshold = u16log2((peak_max + peak_min) / 2);
+    peak_max = adc_val;
+    peak_min = adc_val;
   }
 
   bool los = !amp_det;
 
-  uint16_t adc_val_lg2 = u16log2(adc_val);
-
-  // calc ADC average level
-  adc_sum_value += adc_val_lg2;
-  if (sd_trig) {
-    adc_ave = adc_sum_value / ADC_AVE_PERIOD;
-    adc_sum_value = 0;
-  }
-
-  // hysteresis threshold
-  int16_t thresh = adc_ave;
-  if (last_digital_level == 0) {
-    thresh += 0x100;
-  } else {
-    thresh -= 0x100;
-  }
+  adc_val = u16log2(adc_val);
 
   // level/edge detection
-  bool digital_level = adc_val_lg2 >= thresh;
+  int16_t hysteresis = (last_digital_level != 0) ? 0x100 : -0x100;
+  bool digital_level = adc_val + hysteresis >= threshold;
   bool edge = (digital_level != last_digital_level);
   last_digital_level = digital_level;
 
@@ -143,15 +131,15 @@ void RxCdr::update(uint16_t adc_val, CdrOutput& out) {
   } else {
     sig_det = true;
   }
-  out.signal_detected = sig_det;
+  out->signal_detected = sig_det;
 
   // data recovery
   if (sig_det && phase == sample_phase) {
     const uint8_t tol = (PHASE_PERIOD + 4) / 5;
     const uint8_t mn = PHASE_PERIOD - tol;
     const uint8_t mx = PHASE_PERIOD + tol;
-    out.rxed = true;
-    out.rx_bit = digital_level;
+    out->rxed = true;
+    out->rx_bit = digital_level;
   }
 
   // step CDR phase
@@ -160,6 +148,8 @@ void RxCdr::update(uint16_t adc_val, CdrOutput& out) {
   } else {
     phase = 0;
   }
+
+  return Result::SUCCESS;
 }
 
 static uint16_t u16log2(uint16_t x) {

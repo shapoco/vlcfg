@@ -32,8 +32,6 @@ void Font::drawCharTo(Bitmap &bmp, char c, int x, int y, bool white) const {
     for (int cx = 0; cx < width; cx++) {
       if (bitmap.getPixel(charIndex * width + cx, cy)) {
         bmp.setPixel(x + cx, y + cy, white);
-      } else {
-        bmp.setPixel(x + cx, y + cy, !white);
       }
     }
   }

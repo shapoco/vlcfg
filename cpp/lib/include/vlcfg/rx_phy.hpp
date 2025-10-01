@@ -25,7 +25,7 @@ class RxPhy {
   inline uint8_t get_last_byte() const { return last_byte; }
 };  // class
 
-#ifdef VLBS_IMPLEMENTATION
+#ifdef VLCFG_IMPLEMENTATION
 
 RxPhy::RxPhy() { init(); }
 
@@ -34,11 +34,11 @@ void RxPhy::init() { cdr.init(); }
 bool RxPhy::update(uint16_t adc_val, uint8_t *rx_byte) {
   CdrOutput cdrOut;
   PcsOutput pcsOut;
-  cdr.update(adc_val, cdrOut);
+  cdr.update(adc_val, &cdrOut);
   if (cdrOut.rxed) {
     last_bit = cdrOut.rx_bit;
   }
-  pcs.update(cdrOut, pcsOut);
+  pcs.update(&cdrOut, &pcsOut);
   if (pcsOut.rxed) {
     last_byte = pcsOut.rx_byte;
     if (rx_byte != nullptr) {

@@ -18,9 +18,10 @@ class RxCore {
  private:
   vlcfg::RxPhy phy;
 
-  uint8_t rx_buff_size;
+  const uint16_t rx_buff_size;
+
+  uint8_t* rx_buff;
   uint8_t rx_buff_pos = 0;
-  uint8_t* rx_buff = nullptr;
   ConfigEntry* entries = nullptr;
   uint8_t num_entries = 0;
   RxState state = RxState::IDLE;
@@ -33,7 +34,7 @@ class RxCore {
 
   inline ~RxCore() { delete[] rx_buff; }
   void init(ConfigEntry* dst, uint8_t num_entries);
-  Result update(bool rx_valid, uint8_t rx_byte);
+  Result update(PcsOutput* in, RxState* rx_state);
 
  private:
   Result rx_complete();
@@ -54,29 +55,50 @@ void RxCore::init(ConfigEntry* entries, uint8_t num_entries) {
   this->state = RxState::IDLE;
 }
 
-Result RxCore::update(bool rx_valid, uint8_t rx_byte) {
-  if (rx_buff == nullptr || rx_buff_size == 0) {
-    state = RxState::IDLE;
-    return Result::SUCCESS;
-  }
+Result RxCore::update(PcsOutput* in, RxState* rx_state) {
+  if (rx_state == nullptr) return Result::ERR_NULL_POINTER;
+  if (rx_buff == nullptr) return Result::ERR_NULL_POINTER;
 
-  if (state == RxState::IDLE || state == RxState::RECEIVING) {
-    if (rx_valid) {
-      if (rx_buff_pos >= rx_buff_size) {
-        state = RxState::ERROR;
-        return Result::ERR_OVERFLOW;
+  Result ret = Result::SUCCESS;
+
+  switch (state) {
+    case RxState::IDLE:
+      if (in->rxed && in->rx_byte == SYMBOL_SOF) {
+        state = RxState::RECEIVING;
+        rx_buff_pos = 0;
       }
-      rx_buff[rx_buff_pos++] = rx_byte;
-      state = RxState::RECEIVING;
-    } else {
-      auto ret = rx_complete();
-      state = (ret == Result::SUCCESS) ? RxState::COMPLETED : RxState::ERROR;
-      rx_buff_pos = 0;
-      return ret;
-    }
+      break;
+
+    case RxState::RECEIVING:
+      if (in->state == PcsState::LOS) {
+        state = RxState::ERROR;
+        ret = Result::ERR_LOS;
+      } else if (in->rxed) {
+        if (in->rx_byte == SYMBOL_EOF) {
+          ret = rx_complete();
+          state =
+              (ret == Result::SUCCESS) ? RxState::COMPLETED : RxState::ERROR;
+          rx_buff_pos = 0;
+        } else if (0 <= in->rx_byte && in->rx_byte <= 255) {
+          if (rx_buff_pos < rx_buff_size) {
+            VLCFG_PRINTF("rxed: 0x%02X\n", (int)in->rx_byte);
+            rx_buff[rx_buff_pos++] = in->rx_byte;
+          } else {
+            state = RxState::ERROR;
+            ret = Result::ERR_OVERFLOW;
+          }
+        } else {
+          state = RxState::ERROR;
+          ret = Result::ERR_EOF_EXPECTED;
+        }
+      }
+      break;
+
+    default: break;
   }
 
-  return Result::SUCCESS;
+  *rx_state = state;
+  return ret;
 }
 
 Result RxCore::rx_complete() {
@@ -84,16 +106,26 @@ Result RxCore::rx_complete() {
 
   if (rx_buff == nullptr) return Result::ERR_NULL_POINTER;
 
+#ifdef VLCFG_DEBUG
+  VLCFG_PRINTF("buffer content:");
+  for (uint16_t i = 0; i < rx_buff_pos; i++) {
+    printf(" %02X", (int)rx_buff[i]);
+  }
+  printf("\n");
+#endif
+
   uint8_t param;
   CborMajorType mtype;
 
   uint16_t pos = 0;
   ret = read_item_header_u8(&pos, &mtype, &param);
   if (ret != Result::SUCCESS) return ret;
-  if (mtype != CborMajorType::MAP) return Result::ERR_SYNTAX;
+  if (mtype != CborMajorType::MAP) return Result::ERR_SYNTAX_UNSUPPORTED_TYPE;
   if (param > 255) return Result::ERR_TOO_MANY_ENTRIES;
 
   uint8_t num_entries = param;
+
+  VLCFG_PRINTF("CBOR object, num_entries=%d\n", num_entries);
 
   for (uint8_t i = 0; i < num_entries; i++) {
     // key
@@ -106,6 +138,9 @@ Result RxCore::rx_complete() {
     ret = read_value(&pos, &entries[entry_index]);
     if (ret != Result::SUCCESS) return ret;
   }
+
+  VLCFG_PRINTF("CBOR parsing completed successfully.\n");
+
   return Result::SUCCESS;
 }
 
@@ -119,7 +154,9 @@ Result RxCore::find_key(uint16_t* pos, int16_t* entry_index) {
   if (param > 255) return Result::ERR_KEY_TOO_LONG;
 
   uint8_t key_len = param;
-  if (*pos + key_len > rx_buff_pos) return Result::ERR_SYNTAX;
+  if (*pos + key_len > rx_buff_pos) {
+    return Result::ERR_SYNTAX_UNEXPECTED_EOF;
+  }
 
   // Search key
   *entry_index = -1;
@@ -129,6 +166,17 @@ Result RxCore::find_key(uint16_t* pos, int16_t* entry_index) {
       break;
     }
   }
+
+#ifdef VLCFG_DEBUG
+  {
+    char key[256];
+    for (uint16_t i = 0; i < key_len; i++) {
+      key[i] = (char)rx_buff[*pos + i];
+    }
+    key[key_len] = '\0';
+    VLCFG_PRINTF("key '%s' --> field_index=%d\n", key, *entry_index);
+  }
+#endif
 
   *pos += key_len;
   return Result::SUCCESS;  // Not found
@@ -158,7 +206,9 @@ Result RxCore::read_value(uint16_t* pos, ConfigEntry* entry) {
   switch (mtype) {
     case CborMajorType::TEXT_STR: {
       uint8_t len = param;
-      if (*pos + len > rx_buff_pos) return Result::ERR_SYNTAX;
+      if (*pos + len > rx_buff_pos) {
+        return Result::ERR_SYNTAX_UNEXPECTED_EOF;
+      }
       if (entry != nullptr) {
         if (entry->max_size_in_bytes < len + 1) {
           return Result::ERR_VALUE_TOO_LONG;
@@ -168,6 +218,8 @@ Result RxCore::read_value(uint16_t* pos, ConfigEntry* entry) {
           dst[i] = rx_buff[*pos + i];
         }
         dst[len] = '\0';
+
+        VLCFG_PRINTF("string value: '%s'\n", (char*)entry->buffer);
       }
       *pos += len;
 
@@ -180,7 +232,7 @@ Result RxCore::read_value(uint16_t* pos, ConfigEntry* entry) {
 
 Result RxCore::read_item_header_u8(uint16_t* pos, CborMajorType* major_type,
                                    uint8_t* param) {
-  if (*pos >= rx_buff_pos) return Result::ERR_SYNTAX;
+  if (*pos >= rx_buff_pos) return Result::ERR_SYNTAX_UNEXPECTED_EOF;
   uint8_t ib = rx_buff[(*pos)++];
 
   *major_type = static_cast<CborMajorType>(ib >> 5);
@@ -193,14 +245,14 @@ Result RxCore::read_item_header_u8(uint16_t* pos, CborMajorType* major_type,
     uint32_t tmp = 0;
     for (uint8_t i = 0; i < len; i++) {
       if (*pos >= rx_buff_pos) {
-        return Result::ERR_SYNTAX;
+        return Result::ERR_SYNTAX_UNEXPECTED_EOF;
       }
       tmp = (tmp << 8) | rx_buff[(*pos)++];
     }
     *param = tmp;
     return Result::SUCCESS;
   } else {
-    return Result::ERR_SYNTAX;
+    return Result::ERR_SYNTAX_BAD_SHORT_COUNT;
   }
 }
 
