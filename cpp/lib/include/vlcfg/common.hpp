@@ -69,6 +69,7 @@ enum class Result : uint8_t {
   ERR_SYNTAX_UNEXPECTED_EOF,
   ERR_SYNTAX_BAD_SHORT_COUNT,
   ERR_SYNTAX_UNSUPPORTED_TYPE,
+  ERR_BAD_CRC,
 };
 
 enum class CborMajorType : int8_t {
@@ -94,6 +95,25 @@ struct ConfigEntry {
   uint16_t max_size_in_bytes;
   ConfigEntryFlags flags;
 };
+
+uint32_t crc32(const uint8_t* data, uint16_t length);
+
+#ifdef VLCFG_IMPLEMENTATION
+
+uint32_t crc32(const uint8_t* data, uint16_t length) {
+  uint32_t crc = 0xffffffff;
+  for (uint32_t i = 0; i < length; i++) {
+    uint8_t byte = data[i];
+    crc ^= byte;
+    for (uint8_t j = 0; j < 8; j++) {
+      uint32_t mask = -(crc & 1);
+      crc = (crc >> 1) ^ (0xedb88320 & mask);
+    }
+  }
+  return ~crc;
+}
+
+#endif
 
 }  // namespace vlcfg
 

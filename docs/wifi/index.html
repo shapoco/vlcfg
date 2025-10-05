@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0,minimum-scale=1.0">
+  <title>LUART | シャポ庫</title>
+  <style>
+    *,
+    *:before,
+    *:after {
+      box-sizing: border-box;
+    }
+
+    #lamp {
+      width: 100%;
+      height: auto;
+      background: #000;
+      border: solid 1px #000;
+    }
+
+    input {
+      width: 50%;
+      height: 50px;
+      font-size: 30px;
+    }
+
+    .big_button {
+      width: 100%;
+      height: 50px;
+      font-size: 30px;
+    }
+  </style>
+</head>
+
+<body>
+  <form name="f_main">
+    <span style="font-size: 30px">SSID:</span>
+    <input id="t_ssid" type="text" value="test_ssid"><br>
+    <span style="font-size: 30px">Pass:</span>
+    <input id="t_pass" type="text" value="test_pass"><br>
+    <input class="big_button" type="button" onClick="sendMessage();" value="送信">
+  </form>
+  <canvas id="lamp" width="1000" height="500">
+  </canvas>
+  <script>
+
+    const CODE_J = 0b01010;
+    const CODE_K = 0b10001;
+    const CODE_SOF = 0b00011;
+    const CODE_EOF = 0b00111;
+    const CODE_TABLE = [
+      0b00101, 0b00110, 0b01001, 0b01011,
+      0b01100, 0b01101, 0b01110, 0b10010,
+      0b10011, 0b10100, 0b10101, 0b10110,
+      0b11000, 0b11001, 0b11010, 0b11100
+    ];
+    const SYMBOL_BITS = 5;
+
+    var LightCommand = function (lampValue, delayTime) {
+      this.lampValue = lampValue;
+      this.delayTime = delayTime;
+    };
+
+    var st_next_tick = 0;
+    var raf_next_tick = 0;
+
+    var bit_buff = [];
+
+    function sendMessage() {
+      const ssid = document.f_main.t_ssid.value;
+      const pass = document.f_main.t_pass.value;
+
+      // sync, start delimiter
+      for (var i = 0; i < 7; i++) {
+        writeCode(CODE_J);
+        writeCode(CODE_K);
+      }
+
+      writeCode(CODE_J);
+      writeCode(CODE_SOF);
+
+      let payload = [];
+
+      payload.push(0xA2);
+
+      payload.push(0x61);
+      payload.push("s".charCodeAt(0));
+      payload.push(0x60 + (ssid.length & 0x1f));
+      for (var i = 0; i < ssid.length; ++i) {
+        payload.push(ssid.charCodeAt(i));
+      }
+
+      payload.push(0x61);
+      payload.push("p".charCodeAt(0));
+      payload.push(0x60 + (pass.length & 0x1f));
+      for (var i = 0; i < pass.length; ++i) {
+        payload.push(pass.charCodeAt(i));
+      }
+
+      let crc = crc32(payload);
+      payload.push((crc >> 0) & 0xff);
+      payload.push((crc >> 8) & 0xff);
+      payload.push((crc >> 16) & 0xff);
+      payload.push((crc >> 24) & 0xff);
+
+      for (var i = 0; i < payload.length; ++i) {
+        writeByte(payload[i]);
+      }
+
+      writeCode(CODE_J);
+      writeCode(CODE_EOF);
+
+      for (var i = 0; i < 5; i++) {
+        writeCode(CODE_J);
+        writeCode(CODE_K);
+      }
+
+      if (false) {
+        st_next_tick = Date.now();
+        st_sendNextBit();
+      }
+      else {
+        raf_next_tick = performance.now();
+        requestAnimationFrame(raf_sendNextBit);
+      }
+    }
+
+    function crc32(byteArray) {
+      var crc = 0xffffffff;
+      for (var i = 0; i < byteArray.length; i++) {
+        var byte = byteArray[i];
+        crc ^= byte;
+        for (var j = 0; j < 8; j++) {
+          var mask = -(crc & 1);
+          crc = (crc >>> 1) ^ (0xedb88320 & mask);
+        }
+      }
+      return ~crc >>> 0;
+    }
+
+    function writeByte(byteValue) {
+      writeCode(CODE_TABLE[(byteValue >> 4) & 0xf]);
+      writeCode(CODE_TABLE[byteValue & 0xf]);
+    }
+
+    function writeCode(codeValue) {
+      for (var b = 0; b < SYMBOL_BITS; b++) {
+        var bit = (codeValue >> (SYMBOL_BITS - 1)) & 0x1;
+        bit_buff.push(new LightCommand(bit, 100));
+        codeValue <<= 1;
+      }
+    }
+
+    function st_sendNextBit() {
+      var cmd = bit_buff.shift();
+      var now = Date.now();
+      if (bit_buff.length > 0) {
+        setTimeout(st_sendNextBit, cmd.delayTime - (now - st_next_tick));
+        st_next_tick = st_next_tick + cmd.delayTime;
+      }
+
+      var elm_lamp = document.getElementById('lamp');
+
+      if (bit_buff.length == 0) {
+        elm_lamp.style.backgroundColor = "#888";
+        return;
+      }
+
+      if (cmd.lampValue)
+        elm_lamp.style.backgroundColor = "#FFF";
+      else
+        elm_lamp.style.backgroundColor = "#000";
+    }
+
+    function raf_sendNextBit(now) {
+      var raf_continue = true;
+      if (now >= raf_next_tick) {
+        if (bit_buff.length > 0) {
+          var cmd = bit_buff.shift();
+          if (cmd.lampValue) {
+            draw("#FFF");
+          }
+          else {
+            draw("#000");
+          }
+          raf_next_tick += cmd.delayTime;
+        }
+        else {
+          draw("#888");
+          raf_continue = false;
+        }
+      }
+
+      if (raf_continue) {
+        requestAnimationFrame(raf_sendNextBit);
+      }
+    }
+
+    function draw(color) {
+      var elm_lamp = document.getElementById('lamp');
+      const ctx = elm_lamp.getContext('2d');
+
+      ctx.fillStyle = "#000";
+      ctx.fillRect(0, 0, elm_lamp.width, elm_lamp.height);
+
+      ctx.font = "40px Arial";
+      ctx.fillStyle = "#888";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText("Place the receiver on the circle", elm_lamp.width / 2, elm_lamp.height / 2 - 150);
+      ctx.fillText("円の上にセンサーを置いてください", elm_lamp.width / 2, elm_lamp.height / 2 - 100);
+
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(elm_lamp.width / 2, elm_lamp.height / 2 + 50, 100, 0, 2 * Math.PI);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.strokeStyle = "#FFF";
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    }
+
+    draw("#888");
+
+  </script>
+</body>
+
+</html>

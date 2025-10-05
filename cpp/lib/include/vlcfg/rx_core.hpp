@@ -114,6 +114,21 @@ Result RxCore::rx_complete() {
   printf("\n");
 #endif
 
+  if (rx_buff_pos < 4) {
+    return Result::ERR_SYNTAX_UNEXPECTED_EOF;
+  }
+  uint32_t calcedCrc = crc32(rx_buff, rx_buff_pos - 4);
+  uint32_t recvCrc = 0;
+  for (uint8_t i = 0; i < 4; i++) {
+    recvCrc |= (rx_buff[rx_buff_pos - 4 + i] << (8 * i));
+  }
+  if (calcedCrc != recvCrc) {
+    VLCFG_PRINTF("CRC mismatch: calculated=0x%08X, received=0x%08X\n",
+                 calcedCrc, recvCrc);
+    return Result::ERR_BAD_CRC;
+  }
+  VLCFG_PRINTF("CRC OK: 0x%08X\n", calcedCrc);
+
   uint8_t param;
   CborMajorType mtype;
 
