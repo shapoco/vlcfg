@@ -97,6 +97,7 @@ struct ConfigEntry {
 };
 
 uint32_t crc32(const uint8_t* data, uint16_t length);
+uint16_t median3(uint16_t a, uint16_t b, uint16_t c);
 
 #ifdef VLCFG_IMPLEMENTATION
 
@@ -111,6 +112,26 @@ uint32_t crc32(const uint8_t* data, uint16_t length) {
     }
   }
   return ~crc;
+}
+
+uint16_t median3(uint16_t a, uint16_t b, uint16_t c) {
+  if (a > b) {
+    if (b > c) {
+      return b;
+    } else if (a > c) {
+      return c;
+    } else {
+      return a;
+    }
+  } else {
+    if (a > c) {
+      return a;
+    } else if (b > c) {
+      return c;
+    } else {
+      return b;
+    }
+  }
 }
 
 #endif

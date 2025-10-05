@@ -19,9 +19,6 @@ ssd1306::Bitmap lastCanvas(DISPLAY_WIDTH, DISPLAY_HEIGHT);
 std::atomic<bool> displayBusy = false;
 std::atomic<bool> ledOn = false;
 
-// vlcfg::RxPhy rxPhy;
-// vlcfg::RxCore rxCore(1024);
-
 char ssidBuff[32 + 1];
 char passBuff[64 + 1];
 vlcfg::ConfigEntry configEntries[] = {
@@ -50,17 +47,13 @@ int main() {
 }
 
 void core0_main() {
-  set_sys_clock_khz(250000, true);
-  sleep_ms(100);
+  // set_sys_clock_khz(250000, true);
+  // sleep_ms(100);
 
   stdio_init_all();
   sleep_ms(1000);
-  // printf("Hello, VL-CFG!\n");
 
   adc_init();
-  // constexpr int ADC_FREQ = 100000;
-  // constexpr int ADC_CLKDIV = 48000000 / ADC_FREQ;
-  // adc_set_clkdiv(ADC_CLKDIV);
   adc_gpio_init(OPT_SENSOR_PORT);
   adc_select_input(OPT_SENSOR_ADC_CH);
 
@@ -68,7 +61,6 @@ void core0_main() {
   display.init();
 
   receiver.init(configEntries, NUM_CONFIG_ENTRIES);
-  // rxCore.init(configEntries, NUM_CONFIG_ENTRIES);
 
   config.country = CYW43_COUNTRY_JAPAN;
   cyw43_arch_init_with_country(config.country);
@@ -84,44 +76,11 @@ void core0_main() {
     if (nowMs >= nextSampleTimeMs) {
       nextSampleTimeMs += 10;
 
-      {
-        constexpr int FILTER_SIZE = 5;
-        uint16_t medianBuff[FILTER_SIZE];
-        for (int i = 0; i < FILTER_SIZE; i++) {
-          medianBuff[i] = adc_read();
-        }
-        // insertion sort
-        for (int i = 1; i < FILTER_SIZE; i++) {
-          uint16_t v = medianBuff[i];
-          int j = i - 1;
-          while (j >= 0 && medianBuff[j] > v) {
-            medianBuff[j + 1] = medianBuff[j];
-            j--;
-          }
-          medianBuff[j + 1] = v;
-        }
-        adcVal = medianBuff[FILTER_SIZE / 2];
-      }
+      adcVal = vlcfg::median3(adc_read(), adc_read(), adc_read());
 
-      {
-        uint8_t rxByte;
-        auto ret = receiver.update(adcVal, &rxState);
-        if (ret != vlcfg::Result::SUCCESS) {
-          rxLastError = ret;
-        }
-
-        // bool rxed = rxPhy.update(adcVal, &rxByte);
-        // if (rxed) {
-        //   lastChar = rxByte;
-        //   if (lastStrPos < (int)sizeof(lastStr) - 1) {
-        //     lastStr[lastStrPos++] = lastChar;
-        //     lastStr[lastStrPos] = '\0';
-        //   }
-        // } else if (rxPhy.get_pcs_state() == vlcfg::PcsState::LOS) {
-        //   lastChar = '\0';
-        //   lastStr[0] = '\0';
-        //   lastStrPos = 0;
-        // }
+      auto ret = receiver.update(adcVal, &rxState);
+      if (ret != vlcfg::Result::SUCCESS) {
+        rxLastError = ret;
       }
 
       for (int i = 0; i < DISPLAY_WIDTH - 1; i++) {
@@ -200,23 +159,6 @@ void core0_main() {
           snprintf(buff, sizeof(buff), "%1d", static_cast<int>(rxLastError));
           ssd1306::font6x11.drawStringTo(canvas, buff, 114, 0, true);
         }
-
-        //{
-        //  char buff[32];
-        //  if (lastChar != 0) {
-        //    snprintf(buff, sizeof(buff), "chr:'%c' (0x%02x)\n", lastChar,
-        //             (int)lastChar);
-        //  } else {
-        //    snprintf(buff, sizeof(buff), "chr:'\\0' (0x00)\n");
-        //  }
-        //  ssd1306::font6x11.drawStringTo(canvas, buff, 0, 12, true);
-        //}
-        //
-        //{
-        //  char buff[64];
-        //  snprintf(buff, sizeof(buff), "str:\"%s\"", lastStr);
-        //  ssd1306::font6x11.drawStringTo(canvas, buff, 0, 24, true);
-        //}
 
         {
           char buff[sizeof(ssidBuff) + 8];

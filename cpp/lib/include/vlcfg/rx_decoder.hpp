@@ -14,7 +14,7 @@ enum class RxState : uint8_t {
   ERROR,
 };
 
-class RxCore {
+class RxDecoder {
  private:
   vlcfg::RxPhy phy;
 
@@ -27,12 +27,12 @@ class RxCore {
   RxState state = RxState::IDLE;
 
  public:
-  inline RxCore(int buffer_size)
+  inline RxDecoder(int buffer_size)
       : rx_buff_size(buffer_size), rx_buff(new uint8_t[buffer_size]) {
     phy.init();
   }
 
-  inline ~RxCore() { delete[] rx_buff; }
+  inline ~RxDecoder() { delete[] rx_buff; }
   void init(ConfigEntry* dst, uint8_t num_entries);
   Result update(PcsOutput* in, RxState* rx_state);
 
@@ -48,14 +48,14 @@ class RxCore {
 
 #ifdef VLCFG_IMPLEMENTATION
 
-void RxCore::init(ConfigEntry* entries, uint8_t num_entries) {
+void RxDecoder::init(ConfigEntry* entries, uint8_t num_entries) {
   this->entries = entries;
   this->num_entries = num_entries;
   this->rx_buff_pos = 0;
   this->state = RxState::IDLE;
 }
 
-Result RxCore::update(PcsOutput* in, RxState* rx_state) {
+Result RxDecoder::update(PcsOutput* in, RxState* rx_state) {
   if (rx_state == nullptr) return Result::ERR_NULL_POINTER;
   if (rx_buff == nullptr) return Result::ERR_NULL_POINTER;
 
@@ -101,7 +101,7 @@ Result RxCore::update(PcsOutput* in, RxState* rx_state) {
   return ret;
 }
 
-Result RxCore::rx_complete() {
+Result RxDecoder::rx_complete() {
   Result ret;
 
   if (rx_buff == nullptr) return Result::ERR_NULL_POINTER;
@@ -159,7 +159,7 @@ Result RxCore::rx_complete() {
   return Result::SUCCESS;
 }
 
-Result RxCore::find_key(uint16_t* pos, int16_t* entry_index) {
+Result RxDecoder::find_key(uint16_t* pos, int16_t* entry_index) {
   Result ret;
   CborMajorType mtype;
   uint8_t param;
@@ -197,7 +197,7 @@ Result RxCore::find_key(uint16_t* pos, int16_t* entry_index) {
   return Result::SUCCESS;  // Not found
 }
 
-bool RxCore::key_match(const char* key, uint16_t pos, uint16_t len) {
+bool RxDecoder::key_match(const char* key, uint16_t pos, uint16_t len) {
   if (pos + len > rx_buff_pos) return false;
   for (uint16_t i = 0; i < len; i++) {
     if (key[i] == '\0' || key[i] != (char)rx_buff[pos + i]) return false;
@@ -205,7 +205,7 @@ bool RxCore::key_match(const char* key, uint16_t pos, uint16_t len) {
   return key[len] == '\0';
 }
 
-Result RxCore::read_value(uint16_t* pos, ConfigEntry* entry) {
+Result RxDecoder::read_value(uint16_t* pos, ConfigEntry* entry) {
   Result ret;
 
   CborMajorType mtype;
@@ -245,7 +245,7 @@ Result RxCore::read_value(uint16_t* pos, ConfigEntry* entry) {
   }
 }
 
-Result RxCore::read_item_header_u8(uint16_t* pos, CborMajorType* major_type,
+Result RxDecoder::read_item_header_u8(uint16_t* pos, CborMajorType* major_type,
                                    uint8_t* param) {
   if (*pos >= rx_buff_pos) return Result::ERR_SYNTAX_UNEXPECTED_EOF;
   uint8_t ib = rx_buff[(*pos)++];

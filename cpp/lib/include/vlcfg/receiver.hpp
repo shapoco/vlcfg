@@ -3,7 +3,7 @@
 
 #include "vlcfg/common.hpp"
 #include "vlcfg/rx_cdr.hpp"
-#include "vlcfg/rx_core.hpp"
+#include "vlcfg/rx_decoder.hpp"
 #include "vlcfg/rx_pcs.hpp"
 
 namespace vlcfg {
@@ -13,7 +13,7 @@ class Receiver {
  public:
   RxCdr cdr;
   RxPcs pcs;
-  RxCore core;
+  RxDecoder core;
   bool last_bit;
   uint8_t last_byte;
 
