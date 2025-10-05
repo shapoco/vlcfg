@@ -22,10 +22,8 @@ std::atomic<bool> ledOn = false;
 char ssidBuff[32 + 1];
 char passBuff[64 + 1];
 vlcfg::ConfigEntry configEntries[] = {
-    {"s", ssidBuff, vlcfg::CborMajorType::TEXT_STR, (uint16_t)sizeof(ssidBuff),
-     vlcfg::ConfigEntryFlags::NONE},
-    {"p", passBuff, vlcfg::CborMajorType::TEXT_STR, (uint16_t)sizeof(passBuff),
-     vlcfg::ConfigEntryFlags::NONE},
+    {"s", ssidBuff, vlcfg::ValueType::TEXT_STR, sizeof(ssidBuff), 0},
+    {"p", passBuff, vlcfg::ValueType::TEXT_STR, sizeof(passBuff), 0},
 };
 constexpr int NUM_CONFIG_ENTRIES =
     sizeof(configEntries) / sizeof(configEntries[0]);

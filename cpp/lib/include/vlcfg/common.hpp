@@ -72,7 +72,7 @@ enum class Result : uint8_t {
   ERR_BAD_CRC,
 };
 
-enum class CborMajorType : int8_t {
+enum class ValueType : int8_t {
   // UINT = 0,
   // INT = 1,
   // BYTE_STR = 2,
@@ -91,9 +91,9 @@ enum ConfigEntryFlags : uint8_t {
 struct ConfigEntry {
   const char* key;
   void* buffer;
-  CborMajorType type;
+  ValueType type;
   uint16_t max_size_in_bytes;
-  ConfigEntryFlags flags;
+  uint8_t flags;
 };
 
 uint32_t crc32(const uint8_t* data, uint16_t length);

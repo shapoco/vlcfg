@@ -42,7 +42,7 @@ class RxDecoder {
   Result find_key(uint16_t* pos, int16_t* entry_index);
   bool key_match(const char* key, uint16_t pos, uint16_t len);
   Result read_value(uint16_t* pos, ConfigEntry* entry);
-  Result read_item_header_u8(uint16_t* pos, CborMajorType* major_type,
+  Result read_item_header_u8(uint16_t* pos, ValueType* major_type,
                              uint8_t* param);
 };
 
@@ -130,12 +130,12 @@ Result RxDecoder::rx_complete() {
   VLCFG_PRINTF("CRC OK: 0x%08X\n", calcedCrc);
 
   uint8_t param;
-  CborMajorType mtype;
+  ValueType mtype;
 
   uint16_t pos = 0;
   ret = read_item_header_u8(&pos, &mtype, &param);
   if (ret != Result::SUCCESS) return ret;
-  if (mtype != CborMajorType::MAP) return Result::ERR_SYNTAX_UNSUPPORTED_TYPE;
+  if (mtype != ValueType::MAP) return Result::ERR_SYNTAX_UNSUPPORTED_TYPE;
   if (param > 255) return Result::ERR_TOO_MANY_ENTRIES;
 
   uint8_t num_entries = param;
@@ -161,11 +161,11 @@ Result RxDecoder::rx_complete() {
 
 Result RxDecoder::find_key(uint16_t* pos, int16_t* entry_index) {
   Result ret;
-  CborMajorType mtype;
+  ValueType mtype;
   uint8_t param;
   ret = read_item_header_u8(pos, &mtype, &param);
   if (ret != Result::SUCCESS) return ret;
-  if (mtype != CborMajorType::TEXT_STR) return Result::ERR_KEY_TYPE_MISMATCH;
+  if (mtype != ValueType::TEXT_STR) return Result::ERR_KEY_TYPE_MISMATCH;
   if (param > 255) return Result::ERR_KEY_TOO_LONG;
 
   uint8_t key_len = param;
@@ -208,7 +208,7 @@ bool RxDecoder::key_match(const char* key, uint16_t pos, uint16_t len) {
 Result RxDecoder::read_value(uint16_t* pos, ConfigEntry* entry) {
   Result ret;
 
-  CborMajorType mtype;
+  ValueType mtype;
   uint8_t param;
   ret = read_item_header_u8(pos, &mtype, &param);
   if (ret != Result::SUCCESS) return ret;
@@ -219,7 +219,7 @@ Result RxDecoder::read_value(uint16_t* pos, ConfigEntry* entry) {
   }
 
   switch (mtype) {
-    case CborMajorType::TEXT_STR: {
+    case ValueType::TEXT_STR: {
       uint8_t len = param;
       if (*pos + len > rx_buff_pos) {
         return Result::ERR_SYNTAX_UNEXPECTED_EOF;
@@ -245,12 +245,12 @@ Result RxDecoder::read_value(uint16_t* pos, ConfigEntry* entry) {
   }
 }
 
-Result RxDecoder::read_item_header_u8(uint16_t* pos, CborMajorType* major_type,
+Result RxDecoder::read_item_header_u8(uint16_t* pos, ValueType* major_type,
                                    uint8_t* param) {
   if (*pos >= rx_buff_pos) return Result::ERR_SYNTAX_UNEXPECTED_EOF;
   uint8_t ib = rx_buff[(*pos)++];
 
-  *major_type = static_cast<CborMajorType>(ib >> 5);
+  *major_type = static_cast<ValueType>(ib >> 5);
   uint8_t short_count = (ib & 0x1f);
   if (short_count <= 23) {
     *param = short_count;
