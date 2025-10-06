@@ -6,6 +6,36 @@ Protocol and library implementation for sending configuration information by fla
 
 リッチな入力インタフェースを持たないデバイスに対し、PC やスマートフォンの画面の点滅によって設定情報を送信するためのプロトコルおよびライブラリ実装です。
 
+# Transmitter
+
+See [Demo Page](https://shapoco.github.io/vlconfig/wifi/).
+
+# Receiver
+
+## Input Circuit
+
+![](./docs/img/schematic_input_with_adc.svg)
+
+## Decoder Software
+
+See [Library Code](cpp/lib).
+
+## Demo (Raspberry Pi Pico 2 W)
+
+See [Demo Program](cpp/example/pico)
+
+### Connection
+
+|Pico2W|Connection|
+|:--|:--|
+|GPIO16 (I2C0 SDA)|EEPROM|
+|GPIO17 (I2C0 SCL)|EEPROM|
+|GPIO18|User Switch 0|
+|GPIO19|User Switch 1|
+|GPIO26 (I2C1 SDA)|SSD1306|
+|GPIO27 (I2C1 SCL)|SSD1306|
+|GPIO28 (ADC2)|Optical Sensor|
+
 # Protocol
 
 ## Symbol Table
@@ -53,35 +83,3 @@ Payload is encoded as a subset of [CBOR](https://datatracker.ietf.org/doc/html/r
 ||CRC32 \[23:16\]|
 ||CRC32 \[15:8\]|
 ||CRC32 \[7:0\]|
-
-# Receiver
-
-## Input Circuit
-
-![](./docs/img/schematic_input_with_adc.svg)
-
-## Decoder Software
-
-See [Library Code](cpp/lib).
-
-## Demo (Raspberry Pi Pico 2 W)
-
-See [Demo Program](cpp/example/pico)
-
-### Connection
-
-|Pico2W|Connection|
-|:--|:--|
-|GPIO16 (I2C0 SDA)|EEPROM|
-|GPIO17 (I2C0 SCL)|EEPROM|
-|GPIO18|User Switch 0|
-|GPIO19|User Switch 1|
-|GPIO26 (I2C1 SDA)|SSD1306|
-|GPIO27 (I2C1 SCL)|SSD1306|
-|GPIO28 (ADC2)|Optical Sensor|
-
-# Transmitter
-
-See [Demo Page](https://shapoco.github.io/vlconfig/wifi/).
-
-
