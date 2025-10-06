@@ -102,10 +102,10 @@ const vlcfg = (function () {
       }
       payload[0] |= numEntries;
       let crc = crc32(payload);
-      payload.push((crc >> 0) & 0xff);
-      payload.push((crc >> 8) & 0xff);
-      payload.push((crc >> 16) & 0xff);
-      payload.push((crc >> 24) & 0xff);
+      payload.push(Math.floor(crc / 0x1000000) & 0xff);
+      payload.push(Math.floor(crc / 0x10000) & 0xff);
+      payload.push(Math.floor(crc / 0x100) & 0xff);
+      payload.push(Math.floor(crc / 0x1) & 0xff);
 
       let hexStr = "";
       for (const byte of payload) {
@@ -336,23 +336,23 @@ const vlcfg = (function () {
 
   function pushMajorType(payload, majorType, param) {
     if (param < 24) {
-      payload.push(majorType+ param);
+      payload.push(majorType + param);
     }
     else if (param < 0x100) {
-      payload.push(majorType+24);
+      payload.push(majorType + 24);
       payload.push(param);
     }
     else if (param < 0x10000) {
-      payload.push(majorType+25);
+      payload.push(majorType + 25);
       payload.push((param >> 8) & 0xFF);
       payload.push(param & 0xFF);
     }
-    else if (param < Math.pow(2, 32)) {
-      payload.push(majorType+26);
-      payload.push(Math.floor(param / Math.pow(2, 24)) % 256);
-      payload.push(Math.floor(param / Math.pow(2, 16)) % 256);
-      payload.push(Math.floor(param / Math.pow(2, 8)) % 256);
-      payload.push(Math.floor(param / Math.pow(2, 0)) % 256);
+    else if (param < 0x100000000) {
+      payload.push(majorType + 26);
+      payload.push(Math.floor(param / 0x1000000) & 0xFF);
+      payload.push(Math.floor(param / 0x10000) & 0xFF);
+      payload.push(Math.floor(param / 0x100) & 0xFF);
+      payload.push(Math.floor(param / 0x1) & 0xFF);
     }
     else {
       throw new Error("Number too large");

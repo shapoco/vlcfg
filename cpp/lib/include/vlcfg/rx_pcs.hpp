@@ -6,8 +6,7 @@
 namespace vlcfg {
 
 class RxPcs {
-  // todo: private:
- public:
+ private:
   PcsState state;
   uint16_t shift_reg;
   uint8_t phase;
@@ -20,12 +19,6 @@ class RxPcs {
 };
 
 #ifdef VLCFG_IMPLEMENTATION
-
-static constexpr int16_t SYMBOL_CONTROL = -1;
-static constexpr int16_t SYMBOL_SYNC = -2;
-static constexpr int16_t SYMBOL_SOF = -3;
-static constexpr int16_t SYMBOL_EOF = -4;
-static constexpr int16_t SYMBOL_INVALID = -16;
 
 static const int8_t DECODE_TABLE[1 << SYMBOL_BITS] = {
     SYMBOL_INVALID,  // 0b00000
@@ -69,7 +62,9 @@ void RxPcs::init() {
 }
 
 Result RxPcs::update(const CdrOutput *in, PcsOutput *out) {
-  if (out == nullptr) return Result::ERR_NULL_POINTER;
+  if (out == nullptr) {
+    VLCFG_THROW(Result::ERR_NULL_POINTER);
+  }
 
   if (!in->signal_detected) {
     init();

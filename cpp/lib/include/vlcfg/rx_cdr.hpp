@@ -10,8 +10,7 @@ static const uint16_t ADC_AVE_PERIOD = PHASE_PERIOD * SYMBOL_BITS * 2;
 static const uint8_t ADC_BITS = 12;
 
 class RxCdr {
-  // todo: private:
- public:
+ private:
   uint8_t amp_det_count;
   bool amp_det;
   uint16_t sig_det_count;
@@ -22,7 +21,7 @@ class RxCdr {
   uint8_t last_digital_level;
   uint8_t phase;
   uint8_t sample_phase;
-  uint16_t edge_level[PHASE_PERIOD];
+  uint8_t edge_level[PHASE_PERIOD];
 
  public:
   inline RxCdr() { init(); }
@@ -55,7 +54,9 @@ void RxCdr::init() {
 Result RxCdr::update(uint16_t adc_val, CdrOutput* out) {
   out->rxed = false;
 
-  if (out == nullptr) return Result::ERR_NULL_POINTER;
+  if (out == nullptr) {
+    VLCFG_THROW(Result::ERR_NULL_POINTER);
+  }
 
   // amplitude detection
   if (amp_det_count < ADC_AVE_PERIOD) {

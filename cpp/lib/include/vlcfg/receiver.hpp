@@ -9,18 +9,19 @@
 namespace vlcfg {
 
 class Receiver {
-  // todo: private:
  public:
   RxCdr cdr;
   RxPcs pcs;
-  RxDecoder core;
+  RxDecoder dec;
+
+ private:
   bool last_bit;
   uint8_t last_byte;
 
  public:
   inline Receiver(int rx_buff_size = 256, ConfigEntry *entries = nullptr,
                   uint8_t num_entries = 0)
-      : core(rx_buff_size) {
+      : dec(rx_buff_size) {
     init(entries, num_entries);
   }
   void init(ConfigEntry *entries, uint8_t num_entries);
@@ -36,27 +37,25 @@ class Receiver {
 void Receiver::init(ConfigEntry *entries, uint8_t num_entries) {
   cdr.init();
   pcs.init();
-  core.init(entries, num_entries);
+  dec.init(entries, num_entries);
 }
 
 Result Receiver::update(uint16_t adc_val, RxState *rx_state) {
-  Result ret;
-
   CdrOutput cdrOut;
-  ret = cdr.update(adc_val, &cdrOut);
-  if (ret != Result::SUCCESS) return ret;
+  VLCFG_TRY(cdr.update(adc_val, &cdrOut));
   if (cdrOut.rxed) last_bit = cdrOut.rx_bit;
 
   PcsOutput pcsOut;
-  ret = pcs.update(&cdrOut, &pcsOut);
-  if (ret != Result::SUCCESS) return ret;
+  VLCFG_TRY(pcs.update(&cdrOut, &pcsOut));
   if (pcsOut.rxed) last_byte = pcsOut.rx_byte;
 
-  return core.update(&pcsOut, rx_state);
+  VLCFG_TRY(dec.update(&pcsOut, rx_state));
+
+  return Result::SUCCESS;
 }
 
 #endif
 
 }  // namespace vlcfg
 
-#endif  // VLBS_RX_PHY_HPP
+#endif

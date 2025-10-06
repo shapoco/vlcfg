@@ -1,9 +1,8 @@
 #ifndef VLCFG_RX_HPP
 #define VLCFG_RX_HPP
 
-#include <vlcfg/rx_phy.hpp>
-
 #include "vlcfg/common.hpp"
+#include "vlcfg/rx_buff.hpp"
 
 namespace vlcfg {
 
@@ -16,142 +15,121 @@ enum class RxState : uint8_t {
 
 class RxDecoder {
  private:
-  vlcfg::RxPhy phy;
+  RxBuff buff;
 
-  const uint16_t rx_buff_size;
-
-  uint8_t* rx_buff;
-  uint8_t rx_buff_pos = 0;
   ConfigEntry* entries = nullptr;
   uint8_t num_entries = 0;
   RxState state = RxState::IDLE;
 
  public:
-  inline RxDecoder(int buffer_size)
-      : rx_buff_size(buffer_size), rx_buff(new uint8_t[buffer_size]) {
-    phy.init();
-  }
+  inline RxDecoder(int capacity) : buff(capacity) { buff.init(); }
 
-  inline ~RxDecoder() { delete[] rx_buff; }
   void init(ConfigEntry* dst, uint8_t num_entries);
   Result update(PcsOutput* in, RxState* rx_state);
 
  private:
+  Result update_state(PcsOutput* in);
   Result rx_complete();
-
-  Result find_key(uint16_t* pos, int16_t* entry_index);
-  bool key_match(const char* key, uint16_t pos, uint16_t len);
-  Result read_value(uint16_t* pos, ConfigEntry* entry);
-  Result read_item_header_u8(uint16_t* pos, ValueType* major_type,
-                             uint8_t* param);
+  Result find_key(int16_t* entry_index);
+  Result read_value(ConfigEntry* entry);
 };
 
 #ifdef VLCFG_IMPLEMENTATION
 
 void RxDecoder::init(ConfigEntry* entries, uint8_t num_entries) {
+  this->buff.init();
   this->entries = entries;
   this->num_entries = num_entries;
-  this->rx_buff_pos = 0;
+  for (uint8_t i = 0; i < num_entries; i++) {
+    ConfigEntry& entry = entries[i];
+    entry.flags &= ~ConfigEntryFlags::RECEIVED;
+    entry.received = 0;
+  }
   this->state = RxState::IDLE;
 }
 
 Result RxDecoder::update(PcsOutput* in, RxState* rx_state) {
-  if (rx_state == nullptr) return Result::ERR_NULL_POINTER;
-  if (rx_buff == nullptr) return Result::ERR_NULL_POINTER;
+  Result ret = update_state(in);
+  if (ret != Result::SUCCESS) {
+    state = RxState::ERROR;
+  }
+  if (rx_state) {
+    *rx_state = state;
+  }
+  return ret;
+}
 
-  Result ret = Result::SUCCESS;
-
+Result RxDecoder::update_state(PcsOutput* in) {
   switch (state) {
     case RxState::IDLE:
       if (in->rxed && in->rx_byte == SYMBOL_SOF) {
         state = RxState::RECEIVING;
-        rx_buff_pos = 0;
       }
       break;
 
     case RxState::RECEIVING:
       if (in->state == PcsState::LOS) {
-        state = RxState::ERROR;
-        ret = Result::ERR_LOS;
+        VLCFG_THROW(Result::ERR_LOS);
       } else if (in->rxed) {
         if (in->rx_byte == SYMBOL_EOF) {
-          ret = rx_complete();
-          state =
-              (ret == Result::SUCCESS) ? RxState::COMPLETED : RxState::ERROR;
-          rx_buff_pos = 0;
+          VLCFG_TRY(rx_complete());
+          state = RxState::COMPLETED;
         } else if (0 <= in->rx_byte && in->rx_byte <= 255) {
-          if (rx_buff_pos < rx_buff_size) {
-            VLCFG_PRINTF("rxed: 0x%02X\n", (int)in->rx_byte);
-            rx_buff[rx_buff_pos++] = in->rx_byte;
-          } else {
-            state = RxState::ERROR;
-            ret = Result::ERR_OVERFLOW;
-          }
+          VLCFG_PRINTF("rxed: 0x%02X\n", (int)in->rx_byte);
+          VLCFG_TRY(buff.push(in->rx_byte));
         } else {
-          state = RxState::ERROR;
-          ret = Result::ERR_EOF_EXPECTED;
+          VLCFG_THROW(Result::ERR_EOF_EXPECTED);
         }
       }
       break;
 
     default: break;
   }
-
-  *rx_state = state;
-  return ret;
+  return Result::SUCCESS;
 }
 
 Result RxDecoder::rx_complete() {
-  Result ret;
-
-  if (rx_buff == nullptr) return Result::ERR_NULL_POINTER;
-
 #ifdef VLCFG_DEBUG
   VLCFG_PRINTF("buffer content:");
-  for (uint16_t i = 0; i < rx_buff_pos; i++) {
-    printf(" %02X", (int)rx_buff[i]);
+  for (uint16_t i = 0; i < buff.size(); i++) {
+    printf(" %02X", (int)buff.peek(i));
   }
   printf("\n");
 #endif
 
-  if (rx_buff_pos < 4) {
-    return Result::ERR_SYNTAX_UNEXPECTED_EOF;
-  }
-  uint32_t calcedCrc = crc32(rx_buff, rx_buff_pos - 4);
-  uint32_t recvCrc = 0;
-  for (uint8_t i = 0; i < 4; i++) {
-    recvCrc |= (rx_buff[rx_buff_pos - 4 + i] << (8 * i));
-  }
-  if (calcedCrc != recvCrc) {
-    VLCFG_PRINTF("CRC mismatch: calculated=0x%08X, received=0x%08X\n",
-                 calcedCrc, recvCrc);
-    return Result::ERR_BAD_CRC;
-  }
-  VLCFG_PRINTF("CRC OK: 0x%08X\n", calcedCrc);
+  VLCFG_TRY(buff.check_and_remove_crc());
 
-  uint8_t param;
+  uint32_t param;
   ValueType mtype;
 
   uint16_t pos = 0;
-  ret = read_item_header_u8(&pos, &mtype, &param);
-  if (ret != Result::SUCCESS) return ret;
-  if (mtype != ValueType::MAP) return Result::ERR_SYNTAX_UNSUPPORTED_TYPE;
-  if (param > 255) return Result::ERR_TOO_MANY_ENTRIES;
+  VLCFG_TRY(buff.read_item_header_u32(&mtype, &param));
+  if (mtype != ValueType::MAP) {
+    VLCFG_THROW(Result::ERR_UNSUPPORTED_TYPE);
+  }
+  if (param > MAX_ENTRY_COUNT) {
+    VLCFG_THROW(Result::ERR_TOO_MANY_ENTRIES);
+  }
 
   uint8_t num_entries = param;
 
   VLCFG_PRINTF("CBOR object, num_entries=%d\n", num_entries);
 
   for (uint8_t i = 0; i < num_entries; i++) {
-    // key
+    // match key
     int16_t entry_index = -1;
-    auto ret = find_key(&pos, &entry_index);
-    if (ret != Result::SUCCESS) return ret;
-    if (entry_index < 0) return Result::ERR_KEY_NOT_FOUND;
+    VLCFG_TRY(find_key(&entry_index));
+    if (entry_index < 0) {
+      VLCFG_THROW(Result::ERR_KEY_NOT_FOUND);
+    }
+    ConfigEntry& entry = entries[entry_index];
 
     // value
-    ret = read_value(&pos, &entries[entry_index]);
-    if (ret != Result::SUCCESS) return ret;
+    VLCFG_TRY(read_value(&entry));
+  }
+
+  if (buff.size() != 0) {
+    VLCFG_THROW(Result::ERR_EXTRA_BYTES);
   }
 
   VLCFG_PRINTF("CBOR parsing completed successfully.\n");
@@ -159,117 +137,85 @@ Result RxDecoder::rx_complete() {
   return Result::SUCCESS;
 }
 
-Result RxDecoder::find_key(uint16_t* pos, int16_t* entry_index) {
-  Result ret;
+Result RxDecoder::find_key(int16_t* entry_index) {
+  // read key
   ValueType mtype;
-  uint8_t param;
-  ret = read_item_header_u8(pos, &mtype, &param);
-  if (ret != Result::SUCCESS) return ret;
-  if (mtype != ValueType::TEXT_STR) return Result::ERR_KEY_TYPE_MISMATCH;
-  if (param > 255) return Result::ERR_KEY_TOO_LONG;
-
-  uint8_t key_len = param;
-  if (*pos + key_len > rx_buff_pos) {
-    return Result::ERR_SYNTAX_UNEXPECTED_EOF;
+  uint32_t param;
+  VLCFG_TRY(buff.read_item_header_u32(&mtype, &param));
+  if (mtype != ValueType::TEXT_STR) {
+    VLCFG_THROW(Result::ERR_KEY_TYPE_MISMATCH);
   }
+  if (param > MAX_KEY_LEN) {
+    VLCFG_THROW(Result::ERR_KEY_TOO_LONG);
+  }
+  uint8_t rx_key_len = param;
+  char rx_key[MAX_KEY_LEN + 1];
+  VLCFG_TRY(buff.popBytes((uint8_t*)rx_key, rx_key_len));
+  rx_key[rx_key_len] = '\0';
+  VLCFG_PRINTF("key: '%s'\n", rx_key);
 
-  // Search key
   *entry_index = -1;
   for (uint8_t i = 0; i < num_entries; i++) {
-    if (key_match(entries[i].key, *pos, key_len)) {
-      *entry_index = i;
-      break;
+    ConfigEntry& entry = entries[i];
+    if (entry.key == nullptr) {
+      VLCFG_THROW(Result::ERR_NULL_POINTER);
     }
+    for (uint8_t j = 0; j < MAX_KEY_LEN + 1; j++) {
+      if (entry.key[j] != rx_key[j]) break;
+      if (rx_key[j] == '\0') {
+        *entry_index = i;
+        break;
+      }
+    }
+    if (*entry_index >= 0) break;
   }
 
-#ifdef VLCFG_DEBUG
-  {
-    char key[256];
-    for (uint16_t i = 0; i < key_len; i++) {
-      key[i] = (char)rx_buff[*pos + i];
-    }
-    key[key_len] = '\0';
-    VLCFG_PRINTF("key '%s' --> field_index=%d\n", key, *entry_index);
-  }
-#endif
-
-  *pos += key_len;
-  return Result::SUCCESS;  // Not found
+  VLCFG_PRINTF("--> field_index=%d\n", *entry_index);
+  return Result::SUCCESS;
 }
 
-bool RxDecoder::key_match(const char* key, uint16_t pos, uint16_t len) {
-  if (pos + len > rx_buff_pos) return false;
-  for (uint16_t i = 0; i < len; i++) {
-    if (key[i] == '\0' || key[i] != (char)rx_buff[pos + i]) return false;
-  }
-  return key[len] == '\0';
-}
-
-Result RxDecoder::read_value(uint16_t* pos, ConfigEntry* entry) {
-  Result ret;
-
+Result RxDecoder::read_value(ConfigEntry* entry) {
   ValueType mtype;
-  uint8_t param;
-  ret = read_item_header_u8(pos, &mtype, &param);
-  if (ret != Result::SUCCESS) return ret;
+  uint32_t param;
+  VLCFG_TRY(buff.read_item_header_u32(&mtype, &param));
 
   if (entry != nullptr) {
-    if (mtype != entry->type) return Result::ERR_VALUE_TYPE_MISMATCH;
-    if (entry->buffer == nullptr) return Result::ERR_NULL_POINTER;
+    if (mtype != entry->type) {
+      VLCFG_THROW(Result::ERR_VALUE_TYPE_MISMATCH);
+    }
+    if (entry->buffer == nullptr) {
+      VLCFG_THROW(Result::ERR_NULL_POINTER);
+    }
   }
 
+  uint8_t len = 0;
   switch (mtype) {
     case ValueType::BYTE_STR:
     case ValueType::TEXT_STR: {
-      uint8_t len = param;
-      if (*pos + len > rx_buff_pos) {
-        return Result::ERR_SYNTAX_UNEXPECTED_EOF;
-      }
+      bool is_text = (mtype == ValueType::TEXT_STR);
+      len = param;
       if (entry != nullptr) {
-        if (entry->max_size_in_bytes < len + 1) {
-          return Result::ERR_VALUE_TOO_LONG;
+        uint8_t buff_req = is_text ? len + 1 : len;
+        if (buff_req > entry->capacity) {
+          VLCFG_THROW(Result::ERR_VALUE_TOO_LONG);
         }
         uint8_t* dst = (uint8_t*)entry->buffer;
-        for (uint16_t i = 0; i < len; i++) {
-          dst[i] = rx_buff[*pos + i];
+        VLCFG_TRY(buff.popBytes(dst, len));
+        if (is_text) {
+          dst[len] = '\0';
+          VLCFG_PRINTF("string value: '%s'\n", (char*)entry->buffer);
         }
-        dst[len] = '\0';
-
-        VLCFG_PRINTF("string value: '%s'\n", (char*)entry->buffer);
+      } else {
+        VLCFG_TRY(buff.skip(len));
       }
-      *pos += len;
-
-      return Result::SUCCESS;
     } break;
 
-    default: return Result::ERR_VALUE_TYPE_MISMATCH;
+    default: VLCFG_THROW(Result::ERR_VALUE_TYPE_MISMATCH);
   }
-}
 
-Result RxDecoder::read_item_header_u8(uint16_t* pos, ValueType* major_type,
-                                   uint8_t* param) {
-  if (*pos >= rx_buff_pos) return Result::ERR_SYNTAX_UNEXPECTED_EOF;
-  uint8_t ib = rx_buff[(*pos)++];
-
-  *major_type = static_cast<ValueType>(ib >> 5);
-  uint8_t short_count = (ib & 0x1f);
-  if (short_count <= 23) {
-    *param = short_count;
-    return Result::SUCCESS;
-  } else if (short_count <= 27) {
-    uint8_t len = 1 << (short_count - 24);
-    uint32_t tmp = 0;
-    for (uint8_t i = 0; i < len; i++) {
-      if (*pos >= rx_buff_pos) {
-        return Result::ERR_SYNTAX_UNEXPECTED_EOF;
-      }
-      tmp = (tmp << 8) | rx_buff[(*pos)++];
-    }
-    *param = tmp;
-    return Result::SUCCESS;
-  } else {
-    return Result::ERR_SYNTAX_BAD_SHORT_COUNT;
-  }
+  entry->flags |= ConfigEntryFlags::RECEIVED;
+  entry->received = len;
+  return Result::SUCCESS;
 }
 
 #endif
