@@ -23,7 +23,7 @@ Each symbol is transmitted in order from the most significant bit.
 
 |Start Sequence|Payload + FCS|End Sequence|
 |:--|:--|:--|
-|`CTRL` `SYNC` `CTRL` `SYNC` `CTRL` `SOP`|Encoded Bytes|`CTRL` `EOF`|
+|`CTRL` `SYNC` `CTRL` `SYNC` `CTRL` `SOF`|Encoded Bytes|`CTRL` `EOF`|
 
 `CTRL` and `SYNC` are sent alternately between frames.
 
