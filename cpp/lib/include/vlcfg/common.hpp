@@ -24,20 +24,20 @@
   } while (0)
 #endif
 
-#define VLCFG_THROW(x)                                             \
-  do {                                                             \
-    Result __ret = (x);                                            \
-    VLCFG_PRINTF("Error: %s (Code=%d)\n", result_to_string(__ret), \
-                 (int)__ret);                                      \
-    return __ret;                                                  \
+#define VLCFG_THROW(x)                                                   \
+  do {                                                                   \
+    Result __throw_ret = (x);                                            \
+    VLCFG_PRINTF("Error: %s (Code=%d)\n", result_to_string(__throw_ret), \
+                 (int)__throw_ret);                                      \
+    return __throw_ret;                                                  \
   } while (0)
 
-#define VLCFG_TRY(x)                \
-  do {                              \
-    Result __ret = (x);             \
-    if (__ret != Result::SUCCESS) { \
-      VLCFG_THROW(__ret);           \
-    }                               \
+#define VLCFG_TRY(x)                    \
+  do {                                  \
+    Result __try_ret = (x);             \
+    if (__try_ret != Result::SUCCESS) { \
+      VLCFG_THROW(__try_ret);           \
+    }                                   \
   } while (0)
 
 namespace vlcfg {

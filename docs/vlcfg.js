@@ -61,6 +61,7 @@ const vlcfg = (function () {
     sendingSequence = null;
     nextBitPos = 0;
     nextBitTime = 0;
+    wakeLock = null;
 
     /**
      * @param {Object} formJson 
@@ -91,7 +92,6 @@ const vlcfg = (function () {
     }
 
     async send() {
-
       let payload = [];
       let numEntries = 0;
       payload.push(0xA0);
@@ -139,6 +139,15 @@ const vlcfg = (function () {
       this.nextBitPos = 0;
       this.nextBitTime = performance.now() + 100;
       this.animate(performance.now());
+
+      try {
+        if ('wakeLock' in navigator) {
+          this.wakeLock = await navigator.wakeLock.request('screen');
+        }
+      }
+      catch (err) {
+        console.error("Wake Lock error: ", err);
+      }
     }
 
     animate(now) {
@@ -182,6 +191,12 @@ const vlcfg = (function () {
       this.submitButton.disabled = false;
       this.cancelButton.disabled = true;
       this.sendingSequence = null;
+
+      if (this.wakeLock) {
+        this.wakeLock.release().then(() => {
+          this.wakeLock = null;
+        });
+      }
     }
 
     getElement() {
