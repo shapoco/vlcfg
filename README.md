@@ -1,6 +1,10 @@
 # [WIP] VLConfig
 
-Visible Light Configuration Interface
+![](./docs/img/cover.gif)
+
+Protocol and library implementation for sending configuration information by flashing the screen of a PC or smartphone to devices that do not have a rich input interface.
+
+リッチな入力インタフェースを持たないデバイスに対し、PC やスマートフォンの画面の点滅によって設定情報を送信するためのプロトコルおよびライブラリ実装です。
 
 # Protocol
 
