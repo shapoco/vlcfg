@@ -3,4 +3,4 @@
 TEST_PORT := 52380
 
 test:
-	python3 -m http.server $(TEST_PORT) --directory docs &
+	python3 -m http.server $(TEST_PORT) --directory docs

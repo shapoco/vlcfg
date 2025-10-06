@@ -219,6 +219,7 @@ Result RxDecoder::read_value(uint16_t* pos, ConfigEntry* entry) {
   }
 
   switch (mtype) {
+    case ValueType::BYTE_STR:
     case ValueType::TEXT_STR: {
       uint8_t len = param;
       if (*pos + len > rx_buff_pos) {

@@ -1,4 +1,4 @@
-# [WIP] VLCFG
+# [WIP] VLConfig
 
 Visible Light Configuration Interface
 

@@ -64,7 +64,7 @@ Result RxCdr::update(uint16_t adc_val, CdrOutput* out) {
     if (adc_val < peak_min) peak_min = adc_val;
   } else {
     amp_det_count = 0;
-    amp_det = (peak_max - peak_min) >= (1 << (ADC_BITS - 6));
+    amp_det = (peak_max - peak_min) >= (1 << (ADC_BITS - 7));
     threshold = u16log2((peak_max + peak_min) / 2);
     peak_max = adc_val;
     peak_min = adc_val;

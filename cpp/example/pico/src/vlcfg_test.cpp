@@ -20,10 +20,16 @@ std::atomic<bool> displayBusy = false;
 std::atomic<bool> ledOn = false;
 
 char ssidBuff[32 + 1];
-char passBuff[64 + 1];
+char passBuff[32 + 1];
+char ipBuff[6];
+char netMaskBuff[6];
+char gatewayBuff[6];
 vlcfg::ConfigEntry configEntries[] = {
     {"s", ssidBuff, vlcfg::ValueType::TEXT_STR, sizeof(ssidBuff), 0},
     {"p", passBuff, vlcfg::ValueType::TEXT_STR, sizeof(passBuff), 0},
+    {"i", ipBuff, vlcfg::ValueType::BYTE_STR, sizeof(ipBuff), 0},
+    {"n", netMaskBuff, vlcfg::ValueType::BYTE_STR, sizeof(netMaskBuff), 0},
+    {"g", gatewayBuff, vlcfg::ValueType::BYTE_STR, sizeof(gatewayBuff), 0},
 };
 constexpr int NUM_CONFIG_ENTRIES =
     sizeof(configEntries) / sizeof(configEntries[0]);

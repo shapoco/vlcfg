@@ -75,7 +75,7 @@ enum class Result : uint8_t {
 enum class ValueType : int8_t {
   // UINT = 0,
   // INT = 1,
-  // BYTE_STR = 2,
+  BYTE_STR = 2,
   TEXT_STR = 3,
   // ARRAY = 4,
   MAP = 5,

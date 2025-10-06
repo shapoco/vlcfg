@@ -1,0 +1,103 @@
+/* @scope (.vlcfg_scope) {*/
+
+.vlcfg_container {
+  margin: 10px;
+  padding: 10px;
+  background: #222;
+  color: white;
+  border-radius: 10px;
+  font-size: 16px;
+  /*box-shadow: 0 5px 5px rgba(0, 0, 0, 0.5);*/
+}
+
+.vlcfg_container * {
+  box-sizing: border-box;
+}
+
+.vlcfg_container p {
+  margin: 10px 0;
+}
+
+.vlcfg_container .vlcfg_note {
+  font-size: 14px;
+  color: #888;
+}
+
+.vlcfg_container input {
+  width: 100%;
+  background: #000;
+  border: #666 solid 1px;
+  color: white;
+  border-radius: 5px;
+  font-size: 16px;
+}
+
+.vlcfg_container input[type="text"],
+.vlcfg_container input[type="number"],
+.vlcfg_container input[type="password"] {
+  padding: 5px;
+}
+
+.vlcfg_container button {
+  background: #08F;
+  border: none;
+  border-radius: 5px;
+  color: white;
+  padding: 5px 20px;
+  margin: 0 5px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.vlcfg_container button:disabled {
+  background: #345;
+  cursor: default;
+  color: #789;
+}
+
+.vlcfg_container button:hover:enabled {
+  background: #4AF;
+}
+
+.vlcfg_container progress {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background: #000;
+  border: #666 solid 1px;
+  border-radius: 5px;
+  height: 10px;
+  accent-color: #08F;
+  overflow: hidden;
+}
+
+.vlcfg_container ::-webkit-progress-bar {
+  background-color: #000;
+}
+
+.vlcfg_container ::-webkit-progress-value {
+  background-color: #08F;
+}
+
+.vlcfg_container ::-moz-progress-bar {
+  background-color: #08F;
+}
+
+.vlcfg_container .vlcfg_lamp_wrap {
+  background: #000;
+  border-radius: 10px;
+  padding: 50px 0;
+}
+
+.vlcfg_container .vlcfg_lamp {
+  border-radius: 50%;
+  width: 100px;
+  height: 100px;
+  margin: 0px auto;
+  background: #444;
+  border: solid 2px #ccc;
+}
+
+/*}*/
