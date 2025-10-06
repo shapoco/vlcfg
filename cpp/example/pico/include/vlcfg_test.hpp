@@ -11,8 +11,8 @@ static constexpr int OPT_SENSOR_ADC_CH = 2;
 static constexpr int OPT_SENSOR_PORT = 28;
 
 static constexpr int DISPLAY_I2C_HOST = 1;
-static constexpr int DISPLAY_SDA_PORT = 26;
-static constexpr int DISPLAY_SCL_PORT = 27;
+static constexpr int DISPLAY_SDA_PORT = 18;
+static constexpr int DISPLAY_SCL_PORT = 19;
 static constexpr int DISPLAY_WIDTH = 128;
 static constexpr int DISPLAY_HEIGHT = 64;
 static constexpr int DISPLAY_ROWS = (DISPLAY_HEIGHT + 7) / 8;

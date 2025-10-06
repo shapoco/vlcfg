@@ -30,10 +30,10 @@ See [Demo Program](cpp/example/pico)
 |:--|:--|
 |GPIO16 (I2C0 SDA)|EEPROM|
 |GPIO17 (I2C0 SCL)|EEPROM|
-|GPIO18|User Switch 0|
-|GPIO19|User Switch 1|
-|GPIO26 (I2C1 SDA)|SSD1306|
-|GPIO27 (I2C1 SCL)|SSD1306|
+|GPIO18 (I2C1 SDA)|SSD1306|
+|GPIO19 (I2C1 SCL)|SSD1306|
+|GPIO20|User Switch 0|
+|GPIO21|User Switch 1|
 |GPIO28 (ADC2)|Optical Sensor|
 
 # Protocol
