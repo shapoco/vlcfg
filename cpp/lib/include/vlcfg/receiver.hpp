@@ -38,6 +38,7 @@ void Receiver::init(ConfigEntry *entries, uint8_t num_entries) {
   cdr.init();
   pcs.init();
   dec.init(entries, num_entries);
+  VLCFG_PRINTF("Receiver initialized.\n");
 }
 
 Result Receiver::update(uint16_t adc_val, RxState *rx_state) {

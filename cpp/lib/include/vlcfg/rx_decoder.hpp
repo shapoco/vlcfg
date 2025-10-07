@@ -1,5 +1,5 @@
-#ifndef VLCFG_RX_HPP
-#define VLCFG_RX_HPP
+#ifndef VLCFG_RX_DECODER_HPP
+#define VLCFG_RX_DECODER_HPP
 
 #include "vlcfg/common.hpp"
 #include "vlcfg/rx_buff.hpp"
@@ -46,6 +46,7 @@ void RxDecoder::init(ConfigEntry* entries, uint8_t num_entries) {
     entry.received = 0;
   }
   this->state = RxState::IDLE;
+  VLCFG_PRINTF("RX Decoder initialized.\n");
 }
 
 Result RxDecoder::update(PcsOutput* in, RxState* rx_state) {
@@ -89,13 +90,13 @@ Result RxDecoder::update_state(PcsOutput* in) {
 }
 
 Result RxDecoder::rx_complete() {
-#ifdef VLCFG_DEBUG
-  VLCFG_PRINTF("buffer content:");
-  for (uint16_t i = 0; i < buff.size(); i++) {
-    printf(" %02X", (int)buff.peek(i));
-  }
-  printf("\n");
-#endif
+  VLCFG_PRINTF("%d bytes received.\n", (int)buff.size());
+  // #ifdef VLCFG_DEBUG
+  //   VLCFG_PRINTF("buffer content:\n");
+  //   for (uint16_t i = 0; i < buff.size(); i++) {
+  //     VLCFG_PRINTF("  [%4d] %02X", (int)i, (int)buff.peek(i));
+  //   }
+  // #endif
 
   VLCFG_TRY(buff.check_and_remove_crc());
 

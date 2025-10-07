@@ -16,6 +16,9 @@ class RxPcs {
   void init();
   Result update(const CdrOutput *in, PcsOutput *out);
   inline PcsState get_state() const { return state; }
+
+ private:
+  void reset_internal();
 };
 
 #ifdef VLCFG_IMPLEMENTATION
@@ -56,9 +59,8 @@ static const int8_t DECODE_TABLE[1 << SYMBOL_BITS] = {
 };
 
 void RxPcs::init() {
-  state = PcsState::LOS;
-  phase = 0;
-  shift_reg = 0;
+  reset_internal();
+  VLCFG_PRINTF("RX PCS initialized.\n");
 }
 
 Result RxPcs::update(const CdrOutput *in, PcsOutput *out) {
@@ -67,7 +69,7 @@ Result RxPcs::update(const CdrOutput *in, PcsOutput *out) {
   }
 
   if (!in->signal_detected) {
-    init();
+    reset_internal();
     out->state = state;
     out->rxed = false;
     return Result::SUCCESS;
@@ -93,6 +95,7 @@ Result RxPcs::update(const CdrOutput *in, PcsOutput *out) {
   }
 
   bool rxed = false;
+  PcsState last_state = state;
   if (state == PcsState::LOS) {
     if (rxed_sync) {
       // symbol lock
@@ -159,9 +162,21 @@ Result RxPcs::update(const CdrOutput *in, PcsOutput *out) {
     }
   }
 
+#ifdef VLCFG_DEBUG
+  if (last_state != state) {
+    VLCFG_PRINTF("PCS State: %d --> %d\n", (int)last_state, (int)state);
+  }
+#endif
+
   out->state = state;
   out->rxed = rxed;
   return Result::SUCCESS;
+}
+
+void RxPcs::reset_internal() {
+  state = PcsState::LOS;
+  phase = 0;
+  shift_reg = 0;
 }
 
 #endif

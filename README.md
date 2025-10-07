@@ -1,6 +1,6 @@
 # [WIP] VLConfig
 
-![](./docs/img/cover.gif)
+![](./img/cover.gif)
 
 Protocol and library implementation for sending configuration information by flashing the screen of a PC or smartphone to devices that do not have a rich input interface.
 
@@ -18,17 +18,19 @@ See [Demo Page](https://shapoco.github.io/vlconfig/wifi/).
 
 C1 is required to support displays with brightness controlled by PWM. DC offset and amplitude are detected by software.
 
-![](./docs/img/schematic_input_with_adc.svg)
+![](./img/schematic_input_with_adc.svg)
 
 ### Using Digital GPIO
 
 If a digital input is used, a DC offset detector and comparator are required.
 
-![](./docs/img/schematic_input_with_gpio.svg)
+![](./img/schematic_input_with_gpio.svg)
 
-## Decoder Software
+## Decoder Library
 
 See [Library Code](cpp/lib).
+
+![](./img/receiver_flowchart.svg)
 
 ## Demo (Raspberry Pi Pico 2 W)
 

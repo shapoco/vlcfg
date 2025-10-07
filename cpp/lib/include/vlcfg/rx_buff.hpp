@@ -1,5 +1,5 @@
-#ifndef VLCFG_CBOR_READER_HPP
-#define VLCFG_CBOR_READER_HPP
+#ifndef VLCFG_RX_BUFF_HPP
+#define VLCFG_RX_BUFF_HPP
 
 #include "vlcfg/common.hpp"
 

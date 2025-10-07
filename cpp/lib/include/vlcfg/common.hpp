@@ -11,14 +11,57 @@
 #define VLBS_RX_SAMPLES_PER_BIT (10)
 #endif
 
-#define VLCFG_DEBUG
 #ifdef VLCFG_DEBUG
+
+// Arduino の場合
+#ifdef ARDUINO
+
+#define VLCFG_PRINTF_BUFF_SIZE (256)
+
+#include <Arduino.h>
+int vlcfg_printf(const char* fmt, ...);
+
+#ifdef VLCFG_IMPLEMENTATION
+int vlcfg_printf(const char* fmt, ...) {
+  int len = 0;
+  char buf[VLCFG_PRINTF_BUFF_SIZE];
+
+  va_list arg_ptr;
+  va_start(arg_ptr, fmt);
+  len = vsnprintf(buf, VLCFG_PRINTF_BUFF_SIZE, fmt, arg_ptr);
+  va_end(arg_ptr);
+
+  // output to the serial console through the 'Serial'
+  len = Serial.write((uint8_t*)buf, (size_t)len);
+
+  return len;
+}
+#endif
+
+#define VLCFG_PRINTF(fmt, ...)                          \
+  do {                                                  \
+    vlcfg_printf("[VLCFG:%d] " fmt, __LINE__, ##__VA_ARGS__); \
+  } while (0)
+
+#else
+
 #include <stdio.h>
+#ifdef __FILE_NAME__
 #define VLCFG_PRINTF(fmt, ...)                                      \
   do {                                                              \
     printf("[%s:%d] " fmt, __FILE_NAME__, __LINE__, ##__VA_ARGS__); \
   } while (0)
 #else
+#define VLCFG_PRINTF(fmt, ...)             \
+  do {                                     \
+    printf("[VLCFG] " fmt, ##__VA_ARGS__); \
+  } while (0)
+#endif
+
+#endif
+
+#else
+
 #define VLCFG_PRINTF(fmt, ...) \
   do {                         \
   } while (0)

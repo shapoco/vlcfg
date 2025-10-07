@@ -48,6 +48,7 @@ void RxCdr::init() {
   sample_phase = PHASE_PERIOD * 3 / 4;
   peak_min = 9999;
   peak_max = 0;
+  VLCFG_PRINTF("RX CDR initialized.\n");
 }
 
 // clock data recovery
