@@ -16,9 +16,13 @@ See [Demo Page](https://shapoco.github.io/vlconfig/wifi/).
 
 ### Using ADC
 
+C1 is required to support displays with brightness controlled by PWM. DC offset and amplitude are detected by software.
+
 ![](./docs/img/schematic_input_with_adc.svg)
 
 ### Using Digital GPIO
+
+If a digital input is used, a DC offset detector and comparator are required.
 
 ![](./docs/img/schematic_input_with_gpio.svg)
 
