@@ -14,7 +14,13 @@ See [Demo Page](https://shapoco.github.io/vlconfig/wifi/).
 
 ## Input Circuit
 
+### Using ADC
+
 ![](./docs/img/schematic_input_with_adc.svg)
+
+### Using Digital GPIO
+
+![](./docs/img/schematic_input_with_gpio.svg)
 
 ## Decoder Software
 
