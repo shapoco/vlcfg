@@ -6,6 +6,10 @@ Protocol and library implementation for sending configuration information by fla
 
 リッチな入力インタフェースを持たないデバイスに対し、PC やスマートフォンの画面の点滅によって設定情報を送信するためのプロトコルおよびライブラリ実装です。
 
+# For Arduino
+
+See [VLConfig for Arduino](https://github.com/shapoco/vlconfig-arduino).
+
 # Transmitter
 
 See [Demo Page](https://shapoco.github.io/vlconfig/wifi/).
