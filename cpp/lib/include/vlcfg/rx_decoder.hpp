@@ -256,7 +256,7 @@ Result RxDecoder::read_value(ConfigEntry* entry) {
     } break;
 
     case CborMajorType::SIMPLE_OR_FLOAT: {
-      if (param != 20 && param != 21) {
+      if (param == 20 || param == 21) {
         if (entry != nullptr) {
           if (entry->capacity != 1) {
             VLCFG_THROW(Result::ERR_BUFF_SIZE_MISMATCH);
