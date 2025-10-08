@@ -130,7 +130,9 @@ enum class Result : uint8_t {
   ERR_KEY_TOO_LONG,
   ERR_KEY_NOT_FOUND,
   ERR_VALUE_TYPE_MISMATCH,
+  ERR_BUFF_SIZE_MISMATCH,
   ERR_VALUE_TOO_LONG,
+  ERR_VALUE_OUT_OF_RANGE,
   ERR_LOS,
   ERR_EOF_EXPECTED,
   ERR_UNEXPECTED_EOF,
@@ -140,17 +142,24 @@ enum class Result : uint8_t {
   ERR_BAD_CRC,
 };
 
-enum class ValueType : int8_t {
-  // UINT = 0,
-  // INT = 1,
+enum class CborMajorType : uint8_t {
+  UNSIGNED_INT = 0,
+  NEGATIVE_INT = 1,
   BYTE_STR = 2,
   TEXT_STR = 3,
-  // ARRAY = 4,
+  ARRAY = 4,
   MAP = 5,
-  // TAG = 6,
-  // SIMPLE_FLOAT = 7,
-  BOOLEAN = 8,
-  NONE = -1,
+  TAG = 6,
+  SIMPLE_OR_FLOAT = 7,
+};
+
+enum class ValueType : int8_t {
+  NONE,
+  UINT,
+  INT,
+  BYTE_STR,
+  TEXT_STR,
+  BOOLEAN,
 };
 
 enum ConfigEntryFlags : uint8_t {
@@ -186,6 +195,7 @@ const char* result_to_string(Result res) {
     case Result::ERR_KEY_TOO_LONG: return "ERR_KEY_TOO_LONG";
     case Result::ERR_KEY_NOT_FOUND: return "ERR_KEY_NOT_FOUND";
     case Result::ERR_VALUE_TYPE_MISMATCH: return "ERR_VALUE_TYPE_MISMATCH";
+    case Result::ERR_BUFF_SIZE_MISMATCH: return "ERR_BUFF_SIZE_MISMATCH";
     case Result::ERR_VALUE_TOO_LONG: return "ERR_VALUE_TOO_LONG";
     case Result::ERR_LOS: return "ERR_LOS";
     case Result::ERR_EOF_EXPECTED: return "ERR_EOF_EXPECTED";

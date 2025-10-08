@@ -105,12 +105,10 @@ Result RxDecoder::rx_complete() {
 
   VLCFG_TRY(buff.check_and_remove_crc());
 
-  uint32_t param;
-  ValueType mtype;
-
-  uint16_t pos = 0;
-  VLCFG_TRY(buff.read_item_header_u32(&mtype, &param));
-  if (mtype != ValueType::MAP) {
+  CborMajorType mtype;
+  uint64_t param;
+  VLCFG_TRY(buff.read_item_header(&mtype, &param));
+  if (mtype != CborMajorType::MAP) {
     VLCFG_THROW(Result::ERR_UNSUPPORTED_TYPE);
   }
   if (param > MAX_ENTRY_COUNT) {
@@ -145,10 +143,10 @@ Result RxDecoder::rx_complete() {
 
 Result RxDecoder::read_key(int16_t* entry_index) {
   // read key
-  ValueType mtype;
-  uint32_t param;
-  VLCFG_TRY(buff.read_item_header_u32(&mtype, &param));
-  if (mtype != ValueType::TEXT_STR) {
+  CborMajorType mtype;
+  uint64_t param;
+  VLCFG_TRY(buff.read_item_header(&mtype, &param));
+  if (mtype != CborMajorType::TEXT_STR) {
     VLCFG_THROW(Result::ERR_KEY_TYPE_MISMATCH);
   }
   if (param > MAX_KEY_LEN) {
@@ -167,27 +165,81 @@ Result RxDecoder::read_key(int16_t* entry_index) {
 }
 
 Result RxDecoder::read_value(ConfigEntry* entry) {
-  ValueType mtype;
-  uint32_t param;
-  VLCFG_TRY(buff.read_item_header_u32(&mtype, &param));
+  CborMajorType mtype;
+  uint64_t param;
+  VLCFG_TRY(buff.read_item_header(&mtype, &param));
 
   if (entry != nullptr) {
-    if (mtype != entry->type) {
-      VLCFG_THROW(Result::ERR_VALUE_TYPE_MISMATCH);
-    }
     if (entry->buffer == nullptr) {
       VLCFG_THROW(Result::ERR_NULL_POINTER);
     }
   }
 
-  uint8_t len = 0;
   switch (mtype) {
-    case ValueType::BYTE_STR:
-    case ValueType::TEXT_STR: {
-      bool is_text = (mtype == ValueType::TEXT_STR);
-      len = param;
+    case CborMajorType::UNSIGNED_INT:
+    case CborMajorType::NEGATIVE_INT: {
+      if (entry) {
+        uint8_t buff_req = 0;
+        bool rx_pos = mtype == CborMajorType::UNSIGNED_INT;
+        bool rx_neg = mtype == CborMajorType::NEGATIVE_INT;
+        bool rx_msb = (param & 0x8000000000000000) != 0;
+        if (entry->type == ValueType::UINT) {
+          if (rx_neg) VLCFG_THROW(Result::ERR_VALUE_OUT_OF_RANGE);
+          if (param & 0xFFFFFFFF00000000) {
+            buff_req = 8;
+          } else if (param & 0x00000000FFFF0000) {
+            buff_req = 4;
+          } else if (param & 0x000000000000FF00) {
+            buff_req = 2;
+          } else {
+            buff_req = 1;
+          }
+        } else if (entry->type == ValueType::INT) {
+          if (rx_pos && rx_msb) VLCFG_THROW(Result::ERR_VALUE_OUT_OF_RANGE);
+          if (rx_neg && rx_msb) VLCFG_THROW(Result::ERR_VALUE_OUT_OF_RANGE);
+          if (param & 0xFFFFFFFF80000000) {
+            buff_req = 8;
+          } else if (param & 0x000000007FFF8000) {
+            buff_req = 4;
+          } else if (param & 0x0000000000007F80) {
+            buff_req = 2;
+          } else {
+            buff_req = 1;
+          }
+          if (rx_neg) {
+            param = static_cast<uint64_t>(-static_cast<int64_t>(param) - 1);
+          }
+        } else {
+          VLCFG_THROW(Result::ERR_VALUE_TYPE_MISMATCH);
+        }
+
+        if (buff_req > entry->capacity) {
+          VLCFG_THROW(Result::ERR_VALUE_TOO_LONG);
+        }
+        void* dst = entry->buffer;
+        switch (entry->capacity) {
+          case 1: *(uint8_t*)dst = static_cast<uint8_t>(param); break;
+          case 2: *(uint16_t*)dst = static_cast<uint16_t>(param); break;
+          case 4: *(uint32_t*)dst = static_cast<uint32_t>(param); break;
+          case 8: *(uint64_t*)dst = static_cast<uint64_t>(param); break;
+          default: VLCFG_THROW(Result::ERR_BUFF_SIZE_MISMATCH);
+        }
+        entry->received = entry->capacity;
+      }
+    } break;
+
+    case CborMajorType::BYTE_STR:
+    case CborMajorType::TEXT_STR: {
+      bool is_text = (mtype == CborMajorType::TEXT_STR);
+      uint16_t len = param;
       if (entry != nullptr) {
-        uint8_t buff_req = is_text ? len + 1 : len;
+        ValueType exp_value_type =
+            is_text ? ValueType::TEXT_STR : ValueType::BYTE_STR;
+        if (entry->type != exp_value_type) {
+          VLCFG_THROW(Result::ERR_VALUE_TYPE_MISMATCH);
+        }
+
+        uint16_t buff_req = is_text ? len + 1 : len;
         if (buff_req > entry->capacity) {
           VLCFG_THROW(Result::ERR_VALUE_TOO_LONG);
         }
@@ -197,27 +249,33 @@ Result RxDecoder::read_value(ConfigEntry* entry) {
           dst[len] = '\0';
           VLCFG_PRINTF("string value: '%s'\n", (char*)entry->buffer);
         }
+        entry->received = buff_req;
       } else {
         VLCFG_TRY(buff.skip(len));
       }
     } break;
 
-    case ValueType::BOOLEAN: {
-      len = 1;
-      if (entry != nullptr) {
-        if (entry->capacity < 1) {
-          VLCFG_THROW(Result::ERR_VALUE_TOO_LONG);
+    case CborMajorType::SIMPLE_OR_FLOAT: {
+      if (param != 20 && param != 21) {
+        if (entry != nullptr) {
+          if (entry->capacity != 1) {
+            VLCFG_THROW(Result::ERR_BUFF_SIZE_MISMATCH);
+          }
+          bool value = (param == 20) ? false : true;
+          *((uint8_t*)entry->buffer) = value ? 1 : 0;
+          entry->received = 1;
+          VLCFG_PRINTF("boolean value: %s\n", value ? "true" : "false");
         }
-        *((uint8_t*)entry->buffer) = param;
-        VLCFG_PRINTF("boolean value: %s\n", param ? "true" : "false");
+      } else {
+        VLCFG_THROW(Result::ERR_UNSUPPORTED_TYPE);
       }
+
     } break;
 
-    default: VLCFG_THROW(Result::ERR_VALUE_TYPE_MISMATCH);
+    default: VLCFG_THROW(Result::ERR_UNSUPPORTED_TYPE);
   }
 
-  entry->flags |= ConfigEntryFlags::ENTRY_RECEIVED;
-  entry->received = len;
+  if (entry) entry->flags |= ConfigEntryFlags::ENTRY_RECEIVED;
   return Result::SUCCESS;
 }
 

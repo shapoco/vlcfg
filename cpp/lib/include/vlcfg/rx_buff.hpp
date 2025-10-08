@@ -76,43 +76,57 @@ class RxBuff {
            (static_cast<uint32_t>(buf[2]) << 8) | buf[3];
     return Result::SUCCESS;
   }
+  inline Result popU64(uint64_t *out) {
+    uint8_t buf[8];
+    VLCFG_TRY(popBytes(buf, sizeof(buf)));
+    *out = (static_cast<uint64_t>(buf[0]) << 56) |
+           (static_cast<uint64_t>(buf[1]) << 48) |
+           (static_cast<uint64_t>(buf[2]) << 40) |
+           (static_cast<uint64_t>(buf[3]) << 32) |
+           (static_cast<uint64_t>(buf[4]) << 24) |
+           (static_cast<uint64_t>(buf[5]) << 16) |
+           (static_cast<uint64_t>(buf[6]) << 8) | buf[7];
+    return Result::SUCCESS;
+  }
 
-  Result read_item_header_u32(ValueType *value_type, uint32_t *param);
+  Result read_item_header(CborMajorType *value_type, uint64_t *param);
   Result check_and_remove_crc();
 };
 
 #ifdef VLCFG_IMPLEMENTATION
 
-Result RxBuff::read_item_header_u32(ValueType *value_type, uint32_t *param) {
+Result RxBuff::read_item_header(CborMajorType *value_type, uint64_t *param) {
   uint8_t ib;
   VLCFG_TRY(popU8(&ib));
 
-  uint8_t mt = ib >> 5;
+  *value_type = static_cast<CborMajorType>(ib >> 5);
   uint8_t short_count = (ib & 0x1f);
 
-  if (mt < 7) {
-    *value_type = static_cast<ValueType>(mt);
-
+  if (*value_type != CborMajorType::SIMPLE_OR_FLOAT) {
     if (short_count <= 23) {
       *param = short_count;
-    } else if (short_count == 24) {
-      uint8_t tmp;
-      VLCFG_TRY(popU8(&tmp));
-      *param = tmp;
-    } else if (short_count == 25) {
-      uint16_t tmp;
-      VLCFG_TRY(popU16(&tmp));
-      *param = tmp;
-    } else if (short_count == 26) {
-      uint32_t tmp;
-      VLCFG_TRY(popU32(&tmp));
-      *param = tmp;
+    } else if (short_count <= 27) {
+      uint8_t tmp[8];
+      int8_t len = 1 << (short_count - 24);
+      for (int8_t i = len - 1; i >= 0; i--) {
+        VLCFG_TRY(popU8(&tmp[i]));
+      }
+      for (int8_t i = len; i < 8; i++) {
+        tmp[i] = 0;
+      }
+      *param = (static_cast<uint64_t>(tmp[0]) << 0) |
+               (static_cast<uint64_t>(tmp[1]) << 8) |
+               (static_cast<uint64_t>(tmp[2]) << 16) |
+               (static_cast<uint64_t>(tmp[3]) << 24) |
+               (static_cast<uint64_t>(tmp[4]) << 32) |
+               (static_cast<uint64_t>(tmp[5]) << 40) |
+               (static_cast<uint64_t>(tmp[6]) << 48) |
+               (static_cast<uint64_t>(tmp[7]) << 56);
     } else {
       VLCFG_THROW(Result::ERR_BAD_SHORT_COUNT);
     }
   } else if (short_count == 20 || short_count == 21) {
-    *value_type = ValueType::BOOLEAN;
-    *param = short_count - 20;
+    *param = short_count;
     return Result::SUCCESS;
   } else {
     VLCFG_THROW(Result::ERR_UNSUPPORTED_TYPE);

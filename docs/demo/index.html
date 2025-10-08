@@ -16,9 +16,10 @@
     <script>
       const formObj = vlcfg.makeForm({
         'entries': [
-          { key: 't', type: 't', label: 'Text String', value: "ABC"  },
-          { key: 'p', type: 'p', label: 'Password String' , value: "XYZ"},
-          { key: 'i', type: 'd', label: 'IP Address' , value: "192.168.100.123"},
+          { key: 't', type: 't', label: 'Text String', value: "ABC", placeholder: '(Auto)' },
+          { key: 'p', type: 'p', label: 'Password String', value: "XYZ", placeholder: '(Auto)' },
+          { key: 'n', type: 'n', label: 'Number', value: 12345, placeholder: '(Auto)' },
+          { key: 'i', type: 'd', label: 'IP Address', value: "192.168.100.123", placeholder: '(Auto)' },
           { key: 'l', type: 'c', label: 'LED On', value: true },
         ]
       }).appendTo("#vlcfg_wrapper");

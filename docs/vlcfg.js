@@ -18,6 +18,7 @@ const vlcfg = (function () {
   const TYPE_CHAR_TEXT = 't';
   const TYPE_CHAR_PASSWORD = 'p';
   const TYPE_CHAR_IP_ADDRESS = 'd';
+  const TYPE_CHAR_NUMBER = 'n';
   const TYPE_CHAR_CHECK = 'c';
 
   class Vlcfg {
@@ -281,6 +282,9 @@ const vlcfg = (function () {
         case TYPE_CHAR_IP_ADDRESS:
           this.input.type = "text";
           break;
+        case TYPE_CHAR_NUMBER:
+          this.input.type = "number";
+          break;
         case TYPE_CHAR_CHECK:
           this.input.type = "checkbox";
           break;
@@ -337,6 +341,15 @@ const vlcfg = (function () {
           }
         } break;
 
+        case TYPE_CHAR_NUMBER: {
+          const valStr = this.input.value;
+          const val = Number(valStr);
+          if (!Number.isInteger(val)) {
+            throw new Error("Floating point number is not supported");
+          }
+          pushInt(payload, BigInt(val));
+        } break;
+
         case TYPE_CHAR_CHECK:
           pushBoolean(payload, this.input.checked);
           break;
@@ -367,8 +380,13 @@ const vlcfg = (function () {
     }
   }
 
-  function pushUnsignedInt(payload, value) {
-    pushMajorType(payload, 0x00, value);
+  function pushInt(payload, value) {
+    if (value >= 0n) {
+      pushMajorType(payload, 0x00, value);
+    }
+    else {
+      pushMajorType(payload, 0x20, -1n - value);
+    }
   }
 
   function pushBoolean(payload, value) {
@@ -376,24 +394,40 @@ const vlcfg = (function () {
   }
 
   function pushMajorType(payload, majorType, param) {
+    param = BigInt(param);
+    if (param < 0) {
+      throw new Error("Parameter out of range");
+    }
     if (param < 24) {
-      payload.push(majorType + param);
+      payload.push(majorType + Number(param));
     }
-    else if (param < 0x100) {
-      payload.push(majorType + 24);
-      payload.push(param);
-    }
-    else if (param < 0x10000) {
-      payload.push(majorType + 25);
-      payload.push((param >> 8) & 0xFF);
-      payload.push(param & 0xFF);
-    }
-    else if (param < 0x100000000) {
-      payload.push(majorType + 26);
-      payload.push(Math.floor(param / 0x1000000) & 0xFF);
-      payload.push(Math.floor(param / 0x10000) & 0xFF);
-      payload.push(Math.floor(param / 0x100) & 0xFF);
-      payload.push(Math.floor(param / 0x1) & 0xFF);
+    else if (param < 0x10000000000000000n) {
+      let buff = [];
+      let tmp = param;
+      do {
+        buff.push(Number(tmp & 0xFFn));
+        tmp = tmp >> 8n;
+      } while (tmp > 0);
+
+      if (buff.length > 4) {
+        while (buff.length < 8) buff.push(0);
+        payload.push(majorType + 27);
+      }
+      else if (buff.length > 2) {
+        while (buff.length < 4) buff.push(0);
+        payload.push(majorType + 26);
+      }
+      else if (buff.length > 1) {
+        while (buff.length < 2) buff.push(0);
+        payload.push(majorType + 25);
+      }
+      else {
+        payload.push(majorType + 24);
+      }
+
+      for (let i = buff.length - 1; i >= 0; i--) {
+        payload.push(buff[i]);
+      }
     }
     else {
       throw new Error("Number too large");
