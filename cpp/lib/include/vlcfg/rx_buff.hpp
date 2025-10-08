@@ -61,15 +61,6 @@ class RxBuff {
     return Result::SUCCESS;
   }
 
-  inline bool readIfMatch(const uint8_t *pattern, uint16_t len) {
-    if (size() < len) return false;
-    for (uint16_t i = 0; i < len; i++) {
-      if (peek(i) != pattern[i]) return false;
-    }
-    read_pos += len;
-    return true;
-  }
-
   inline Result popU8(uint8_t *out) { return popBytes(out, 1); }
   inline Result popU16(uint16_t *out) {
     uint8_t buf[2];
@@ -86,35 +77,45 @@ class RxBuff {
     return Result::SUCCESS;
   }
 
-  Result read_item_header_u32(ValueType *major_type, uint32_t *param);
+  Result read_item_header_u32(ValueType *value_type, uint32_t *param);
   Result check_and_remove_crc();
 };
 
 #ifdef VLCFG_IMPLEMENTATION
 
-Result RxBuff::read_item_header_u32(ValueType *major_type, uint32_t *param) {
+Result RxBuff::read_item_header_u32(ValueType *value_type, uint32_t *param) {
   uint8_t ib;
   VLCFG_TRY(popU8(&ib));
 
-  *major_type = static_cast<ValueType>(ib >> 5);
-
+  uint8_t mt = ib >> 5;
   uint8_t short_count = (ib & 0x1f);
-  if (short_count <= 23) {
-    *param = short_count;
-  } else if (short_count == 24) {
-    uint8_t tmp;
-    VLCFG_TRY(popU8(&tmp));
-    *param = tmp;
-  } else if (short_count == 25) {
-    uint16_t tmp;
-    VLCFG_TRY(popU16(&tmp));
-    *param = tmp;
-  } else if (short_count == 26) {
-    uint32_t tmp;
-    VLCFG_TRY(popU32(&tmp));
-    *param = tmp;
+
+  if (mt < 7) {
+    *value_type = static_cast<ValueType>(mt);
+
+    if (short_count <= 23) {
+      *param = short_count;
+    } else if (short_count == 24) {
+      uint8_t tmp;
+      VLCFG_TRY(popU8(&tmp));
+      *param = tmp;
+    } else if (short_count == 25) {
+      uint16_t tmp;
+      VLCFG_TRY(popU16(&tmp));
+      *param = tmp;
+    } else if (short_count == 26) {
+      uint32_t tmp;
+      VLCFG_TRY(popU32(&tmp));
+      *param = tmp;
+    } else {
+      VLCFG_THROW(Result::ERR_BAD_SHORT_COUNT);
+    }
+  } else if (short_count == 20 || short_count == 21) {
+    *value_type = ValueType::BOOLEAN;
+    *param = short_count - 20;
+    return Result::SUCCESS;
   } else {
-    VLCFG_THROW(Result::ERR_BAD_SHORT_COUNT);
+    VLCFG_THROW(Result::ERR_UNSUPPORTED_TYPE);
   }
 
   return Result::SUCCESS;

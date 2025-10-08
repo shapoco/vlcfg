@@ -38,8 +38,8 @@ int vlcfg_printf(const char* fmt, ...) {
 }
 #endif
 
-#define VLCFG_PRINTF(fmt, ...)                          \
-  do {                                                  \
+#define VLCFG_PRINTF(fmt, ...)                                \
+  do {                                                        \
     vlcfg_printf("[VLCFG:%d] " fmt, __LINE__, ##__VA_ARGS__); \
   } while (0)
 
@@ -149,11 +149,12 @@ enum class ValueType : int8_t {
   MAP = 5,
   // TAG = 6,
   // SIMPLE_FLOAT = 7,
-  INVALID = -1,
+  BOOLEAN = 8,
+  NONE = -1,
 };
 
 enum ConfigEntryFlags : uint8_t {
-  RECEIVED = 0x01,
+  ENTRY_RECEIVED = 0x01,
 };
 
 struct ConfigEntry {
@@ -163,9 +164,13 @@ struct ConfigEntry {
   uint8_t capacity;
   uint8_t received;
   uint8_t flags;
+
+  inline bool was_received() const { return (flags & ENTRY_RECEIVED) != 0; }
 };
 
 const char* result_to_string(Result res);
+int16_t find_key(const ConfigEntry* entries, const char* key);
+ConfigEntry* entry_from_key(ConfigEntry* entries, const char* key);
 uint32_t crc32(const uint8_t* data, uint16_t length);
 uint16_t median3(uint16_t a, uint16_t b, uint16_t c);
 
@@ -191,6 +196,29 @@ const char* result_to_string(Result res) {
     case Result::ERR_BAD_CRC: return "ERR_BAD_CRC";
     default: return "(Unknown Error)";
   }
+}
+
+int16_t find_key(const ConfigEntry* entries, const char* key) {
+  if (entries == nullptr || key == nullptr) return -1;
+
+  int16_t entry_index = -1;
+  for (uint8_t i = 0; i < MAX_ENTRY_COUNT; i++) {
+    const ConfigEntry& entry = entries[i];
+    if (entry.key == nullptr) {
+      return -1;
+    }
+    for (uint8_t j = 0; j < MAX_KEY_LEN + 1; j++) {
+      if (entry.key[j] != key[j]) break;
+      if (key[j] == '\0') return i;
+    }
+  }
+  return -1;
+}
+
+ConfigEntry* entry_from_key(ConfigEntry* entries, const char* key) {
+  int16_t index = find_key(entries, key);
+  if (index < 0) return nullptr;
+  return &entries[index];
 }
 
 uint32_t crc32(const uint8_t* data, uint16_t length) {

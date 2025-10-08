@@ -83,18 +83,18 @@ First the most significant 4 bits of the original byte are encoded, followed by 
 
 ## Payload + FCS
 
-Payload is encoded as a subset of [CBOR](https://datatracker.ietf.org/doc/html/rfc8949).
+Payload is encoded as a subset of [CBOR](https://www.rfc-editor.org/rfc/rfc8949).
 
 |Name|Content|
 |:--|:--|
 |Object Header|0xA0 + `N`|
 |Key \[0\]|Text String|
-|Value \[0\]|Text String / Byte String|
+|Value \[0\]|Text String / Byte String / Boolean|
 |Key \[1\]|Text String|
-|Value \[1\]|Text String / Byte String|
+|Value \[1\]|Text String / Byte String / Boolean|
 |:<br>:|:<br>:|
 |Key \[`N`-1\]|Text String|
-|Value \[`N`-1\]|Text String / Byte String|
+|Value \[`N`-1\]|Text String / Byte String / Boolean|
 |FCS|CRC32 \[31:24\]|
 ||CRC32 \[23:16\]|
 ||CRC32 \[15:8\]|

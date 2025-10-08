@@ -18,6 +18,7 @@ const vlcfg = (function () {
   const TYPE_CHAR_TEXT = 't';
   const TYPE_CHAR_PASSWORD = 'p';
   const TYPE_CHAR_IP_ADDRESS = 'd';
+  const TYPE_CHAR_CHECK = 'c';
 
   class Vlcfg {
 
@@ -183,7 +184,7 @@ const vlcfg = (function () {
     }
 
     reset() {
-      this.lamp.style.background = "#444";
+      this.lamp.style.background = "#888";
       for (const elm of this.elementsToBeHidden) {
         //elm.style.visibility = "visible";
         fade(elm, true, 500);
@@ -258,7 +259,7 @@ const vlcfg = (function () {
   class FormEntry {
     label = document.createElement("label");
     input = document.createElement("input");
-    container = makeParagraph([this.label, makeBr(), this.input]);
+    container = makeParagraph();
 
     /**
      * @param {Object} entryJson 
@@ -269,7 +270,6 @@ const vlcfg = (function () {
       }
       this.key = entryJson.key;
       this.type = entryJson.type;
-      this.label.textContent = entryJson.label;
       switch (entryJson.type) {
         case TYPE_CHAR_TEXT:
           this.input.type = "text";
@@ -281,10 +281,27 @@ const vlcfg = (function () {
         case TYPE_CHAR_IP_ADDRESS:
           this.input.type = "text";
           break;
+        case TYPE_CHAR_CHECK:
+          this.input.type = "checkbox";
+          break;
         default:
           throw new Error("Invalid form entry type");
       }
-      this.input.placeholder = entryJson.placeholder || "";
+
+      if (entryJson.type == TYPE_CHAR_CHECK) {
+        this.input.checked = entryJson.value ? true : false;
+        this.label.appendChild(this.input);
+        this.container.appendChild(this.label);
+      }
+      else {
+        this.input.value = entryJson.value || "";
+        this.container.appendChild(this.label);
+        this.container.appendChild(makeBr());
+        this.container.appendChild(this.input);
+        this.input.placeholder = entryJson.placeholder || "";
+      }
+
+      this.label.appendChild(document.createTextNode(entryJson.label));
     }
 
     pushToPayload(payload) {
@@ -298,6 +315,7 @@ const vlcfg = (function () {
         case TYPE_CHAR_PASSWORD:
           pushTextString(payload, this.input.value);
           break;
+
         case TYPE_CHAR_IP_ADDRESS: {
           const mV4 = RE_IPV4_ADDR.exec(this.input.value);
           if (mV4) {
@@ -317,8 +335,12 @@ const vlcfg = (function () {
           else {
             throw new Error("Invalid IP address format");
           }
-        }
+        } break;
+
+        case TYPE_CHAR_CHECK:
+          pushBoolean(payload, this.input.checked);
           break;
+
         default:
           throw new Error("Invalid form entry type");
       }
@@ -347,6 +369,10 @@ const vlcfg = (function () {
 
   function pushUnsignedInt(payload, value) {
     pushMajorType(payload, 0x00, value);
+  }
+
+  function pushBoolean(payload, value) {
+    pushMajorType(payload, 0xE0, value ? 21 : 20);
   }
 
   function pushMajorType(payload, majorType, param) {

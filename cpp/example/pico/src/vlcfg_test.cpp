@@ -30,9 +30,8 @@ vlcfg::ConfigEntry configEntries[] = {
     {"i", ipBuff, vlcfg::ValueType::BYTE_STR, sizeof(ipBuff), 0},
     {"n", netMaskBuff, vlcfg::ValueType::BYTE_STR, sizeof(netMaskBuff), 0},
     {"g", gatewayBuff, vlcfg::ValueType::BYTE_STR, sizeof(gatewayBuff), 0},
+    {nullptr, nullptr, vlcfg::ValueType::NONE, 0, 0}, // terminator
 };
-constexpr int NUM_CONFIG_ENTRIES =
-    sizeof(configEntries) / sizeof(configEntries[0]);
 
 vlcfg::Receiver receiver(256);
 vlcfg::RxState rxState = vlcfg::RxState::IDLE;
@@ -64,7 +63,7 @@ void core0_main() {
   display.i2cBusReset();
   display.init();
 
-  receiver.init(configEntries, NUM_CONFIG_ENTRIES);
+  receiver.init(configEntries);
 
   config.country = CYW43_COUNTRY_JAPAN;
   cyw43_arch_init_with_country(config.country);

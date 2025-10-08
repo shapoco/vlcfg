@@ -12,32 +12,39 @@ class Receiver {
  public:
   RxCdr cdr;
   RxPcs pcs;
-  RxDecoder dec;
+  RxDecoder decoder;
 
  private:
   bool last_bit;
   uint8_t last_byte;
 
  public:
-  inline Receiver(int rx_buff_size = 256, ConfigEntry *entries = nullptr,
-                  uint8_t num_entries = 0)
-      : dec(rx_buff_size) {
-    init(entries, num_entries);
+  inline Receiver(int rx_buff_size = 256, ConfigEntry *entries = nullptr)
+      : decoder(rx_buff_size) {
+    init(entries);
   }
-  void init(ConfigEntry *entries, uint8_t num_entries);
+
+  void init(ConfigEntry *entries);
   Result update(uint16_t adc_val, RxState *rx_state);
+
   inline bool signal_detected() const { return cdr.signal_detected(); }
   inline PcsState get_pcs_state() const { return pcs.get_state(); }
+  inline RxState get_decoder_state() const { return decoder.get_state(); }
+
   inline bool get_last_bit() const { return last_bit; }
   inline uint8_t get_last_byte() const { return last_byte; }
+
+  inline ConfigEntry *entry_from_key(const char *key) const {
+    return decoder.entry_from_key(key);
+  }
 };  // class
 
 #ifdef VLCFG_IMPLEMENTATION
 
-void Receiver::init(ConfigEntry *entries, uint8_t num_entries) {
+void Receiver::init(ConfigEntry *entries) {
   cdr.init();
   pcs.init();
-  dec.init(entries, num_entries);
+  decoder.init(entries);
   VLCFG_PRINTF("Receiver initialized.\n");
 }
 
@@ -50,7 +57,7 @@ Result Receiver::update(uint16_t adc_val, RxState *rx_state) {
   VLCFG_TRY(pcs.update(&cdrOut, &pcsOut));
   if (pcsOut.rxed) last_byte = pcsOut.rx_byte;
 
-  VLCFG_TRY(dec.update(&pcsOut, rx_state));
+  VLCFG_TRY(decoder.update(&pcsOut, rx_state));
 
   return Result::SUCCESS;
 }

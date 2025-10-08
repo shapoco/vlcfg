@@ -16,11 +16,10 @@
     <script>
       const formObj = vlcfg.makeForm({
         'entries': [
-          { key: 's', label: 'WiFi SSID', type: 't' },
-          { key: 'p', label: 'WiFi Password', type: 'p' },
-          { key: 'i', label: 'IP Address', type: 'd', placeholder: '(Auto)' },
-          { key: 'n', label: 'Subnet Mask', type: 'd', placeholder: '(Auto)' },
-          { key: 'g', label: 'Default Gateway', type: 'd', placeholder: '(Auto)' },
+          { key: 't', type: 't', label: 'Text String', value: "ABC"  },
+          { key: 'p', type: 'p', label: 'Password String' , value: "XYZ"},
+          { key: 'i', type: 'd', label: 'IP Address' , value: "192.168.100.123"},
+          { key: 'l', type: 'c', label: 'LED On', value: true },
         ]
       }).appendTo("#vlcfg_wrapper");
     </script>

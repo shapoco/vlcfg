@@ -23,19 +23,23 @@
   color: #888;
 }
 
-.vlcfg_container input {
+.vlcfg_container input[type="text"],
+.vlcfg_container input[type="number"],
+.vlcfg_container input[type="password"] {
   width: 100%;
   background: #000;
   border: #666 solid 1px;
   color: white;
   border-radius: 5px;
   font-size: 16px;
+  padding: 5px;
 }
 
-.vlcfg_container input[type="text"],
-.vlcfg_container input[type="number"],
-.vlcfg_container input[type="password"] {
-  padding: 5px;
+.vlcfg_container input[type="checkbox"] {
+  margin-right: 10px;
+  transform: scale(1.5);
+  cursor: pointer;
+  accent-color: #08F;
 }
 
 .vlcfg_container button {
@@ -96,7 +100,7 @@
   width: 100px;
   height: 100px;
   margin: 0px auto;
-  background: #444;
+  background: #888;
   border: solid 2px #ccc;
 }
 

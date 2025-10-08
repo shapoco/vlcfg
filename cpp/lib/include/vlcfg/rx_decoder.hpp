@@ -18,32 +18,37 @@ class RxDecoder {
   RxBuff buff;
 
   ConfigEntry* entries = nullptr;
-  uint8_t num_entries = 0;
   RxState state = RxState::IDLE;
 
  public:
   inline RxDecoder(int capacity) : buff(capacity) { buff.init(); }
 
-  void init(ConfigEntry* dst, uint8_t num_entries);
+  void init(ConfigEntry* dst);
   Result update(PcsOutput* in, RxState* rx_state);
+  inline RxState get_state() const { return state; }
+  inline ConfigEntry* entry_from_key(const char* key) const {
+    return vlcfg::entry_from_key(entries, key);
+  }
 
  private:
   Result update_state(PcsOutput* in);
   Result rx_complete();
-  Result find_key(int16_t* entry_index);
+  Result read_key(int16_t* entry_index);
   Result read_value(ConfigEntry* entry);
 };
 
 #ifdef VLCFG_IMPLEMENTATION
 
-void RxDecoder::init(ConfigEntry* entries, uint8_t num_entries) {
+void RxDecoder::init(ConfigEntry* entries) {
   this->buff.init();
   this->entries = entries;
-  this->num_entries = num_entries;
-  for (uint8_t i = 0; i < num_entries; i++) {
-    ConfigEntry& entry = entries[i];
-    entry.flags &= ~ConfigEntryFlags::RECEIVED;
-    entry.received = 0;
+  if (entries) {
+    for (uint8_t i = 0; i < MAX_ENTRY_COUNT; i++) {
+      ConfigEntry& entry = entries[i];
+      if (entry.key == nullptr) break;
+      entry.flags &= ~ConfigEntryFlags::ENTRY_RECEIVED;
+      entry.received = 0;
+    }
   }
   this->state = RxState::IDLE;
   VLCFG_PRINTF("RX Decoder initialized.\n");
@@ -119,7 +124,7 @@ Result RxDecoder::rx_complete() {
   for (uint8_t i = 0; i < num_entries; i++) {
     // match key
     int16_t entry_index = -1;
-    VLCFG_TRY(find_key(&entry_index));
+    VLCFG_TRY(read_key(&entry_index));
     if (entry_index < 0) {
       VLCFG_THROW(Result::ERR_KEY_NOT_FOUND);
     }
@@ -138,7 +143,7 @@ Result RxDecoder::rx_complete() {
   return Result::SUCCESS;
 }
 
-Result RxDecoder::find_key(int16_t* entry_index) {
+Result RxDecoder::read_key(int16_t* entry_index) {
   // read key
   ValueType mtype;
   uint32_t param;
@@ -155,21 +160,7 @@ Result RxDecoder::find_key(int16_t* entry_index) {
   rx_key[rx_key_len] = '\0';
   VLCFG_PRINTF("key: '%s'\n", rx_key);
 
-  *entry_index = -1;
-  for (uint8_t i = 0; i < num_entries; i++) {
-    ConfigEntry& entry = entries[i];
-    if (entry.key == nullptr) {
-      VLCFG_THROW(Result::ERR_NULL_POINTER);
-    }
-    for (uint8_t j = 0; j < MAX_KEY_LEN + 1; j++) {
-      if (entry.key[j] != rx_key[j]) break;
-      if (rx_key[j] == '\0') {
-        *entry_index = i;
-        break;
-      }
-    }
-    if (*entry_index >= 0) break;
-  }
+  *entry_index = find_key(entries, rx_key);
 
   VLCFG_PRINTF("--> field_index=%d\n", *entry_index);
   return Result::SUCCESS;
@@ -211,10 +202,21 @@ Result RxDecoder::read_value(ConfigEntry* entry) {
       }
     } break;
 
+    case ValueType::BOOLEAN: {
+      len = 1;
+      if (entry != nullptr) {
+        if (entry->capacity < 1) {
+          VLCFG_THROW(Result::ERR_VALUE_TOO_LONG);
+        }
+        *((uint8_t*)entry->buffer) = param;
+        VLCFG_PRINTF("boolean value: %s\n", param ? "true" : "false");
+      }
+    } break;
+
     default: VLCFG_THROW(Result::ERR_VALUE_TYPE_MISMATCH);
   }
 
-  entry->flags |= ConfigEntryFlags::RECEIVED;
+  entry->flags |= ConfigEntryFlags::ENTRY_RECEIVED;
   entry->received = len;
   return Result::SUCCESS;
 }
