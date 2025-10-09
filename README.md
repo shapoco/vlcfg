@@ -12,7 +12,7 @@ See [VLConfig for Arduino](https://github.com/shapoco/vlconfig-arduino).
 
 # Transmitter
 
-See [Demo Page](https://shapoco.github.io/vlconfig/wifi/).
+See [Demo Page](https://shapoco.github.io/vlconfig/demo/).
 
 # Receiver
 
@@ -46,7 +46,7 @@ See [Demo Program](cpp/example/pico)
 |:--|:--|
 |GPIO18 (I2C1 SDA)|SSD1306|
 |GPIO19 (I2C1 SCL)|SSD1306|
-|GPIO20|Monitor Select|
+|GPIO20|Monitor Select Switch|
 |GPIO21|Restart Switch|
 |GPIO28 (ADC2)|Optical Sensor|
 
