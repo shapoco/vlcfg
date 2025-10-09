@@ -116,74 +116,84 @@ static void render_internal_state(vlcfg::Receiver &receiver) {
 
   work_screen.clear();
 
-  // CDR State
+  constexpr int TEXT_HEIGHT = 12;
+
+  // Graph
   {
-    bool sd = receiver.signal_detected();
-    const char *s = sd ? "ACT" : "LOS";
-
-    if (sd) {
-      work_screen.fillRect(0, 0, 24, 11, true);
+    int h = DISPLAY_HEIGHT - TEXT_HEIGHT * 2 - 2;
+    for (int x = 0; x < DISPLAY_WIDTH; x++) {
+      int gh = 1 + (adc_log[x] - min) * h / range;
+      int gy = h - gh;
+      work_screen.fillRect(x, gy, 1, gh, true);
     }
-    ssd1306::font6x11.drawStringTo(work_screen, s, 2, 0, !sd);
+  }
 
-    if (sd) {
-      if (receiver.get_last_bit()) {
-        work_screen.fillRect(28, 0, 8, 11, true);
-      } else {
-        work_screen.drawRect(28, 0, 7, 10, true);
+  {
+    int y = DISPLAY_HEIGHT - TEXT_HEIGHT * 2;
+
+    // CDR State
+    {
+      bool sd = receiver.signal_detected();
+      const char *s = sd ? "ACT" : "LOS";
+
+      if (sd) {
+        work_screen.fillRect(0, y, 24, TEXT_HEIGHT - 1, true);
+      }
+      ssd1306::font6x11.drawStringTo(work_screen, s, 2, y, !sd);
+
+      if (sd) {
+        if (receiver.get_last_bit()) {
+          work_screen.fillRect(28, y, 8, TEXT_HEIGHT - 1, true);
+        } else {
+          work_screen.drawRect(28, y, 7, TEXT_HEIGHT - 2, true);
+        }
       }
     }
-  }
 
-  // PCS State
-  {
-    auto pcs_state = receiver.get_pcs_state();
-    const char *s;
-    switch (pcs_state) {
-      case vlcfg::PcsState::LOS: s = "LOS"; break;
-      case vlcfg::PcsState::RXED_SYNC1: s = "SYNC1"; break;
-      case vlcfg::PcsState::RXED_SYNC2: s = "SYNC2"; break;
-      case vlcfg::PcsState::RXED_SOF: s = "SOF"; break;
-      case vlcfg::PcsState::RXED_BYTE: s = "RXED"; break;
-      case vlcfg::PcsState::RXED_EOF: s = "EOF"; break;
-      default: s = "(unk)"; break;
+    // PCS State
+    {
+      auto pcs_state = receiver.get_pcs_state();
+      const char *s;
+      switch (pcs_state) {
+        case vlcfg::PcsState::LOS: s = "LOS"; break;
+        case vlcfg::PcsState::RXED_SYNC1: s = "SYNC1"; break;
+        case vlcfg::PcsState::RXED_SYNC2: s = "SYNC2"; break;
+        case vlcfg::PcsState::RXED_SOF: s = "SOF"; break;
+        case vlcfg::PcsState::RXED_BYTE: s = "RXED"; break;
+        case vlcfg::PcsState::RXED_EOF: s = "EOF"; break;
+        default: s = "(unk)"; break;
+      }
+      ssd1306::font6x11.drawStringTo(work_screen, s, 40, y, true);
     }
-    ssd1306::font6x11.drawStringTo(work_screen, s, 40, 0, true);
-  }
 
-  // Decoder State
-  {
-    auto rx_state = receiver.get_decoder_state();
+    // Decoder State
+    {
+      auto rx_state = receiver.get_decoder_state();
 
-    const char *s;
-    switch (rx_state) {
-      case vlcfg::RxState::IDLE: s = "IDLE"; break;
-      case vlcfg::RxState::RECEIVING: s = "RECV"; break;
-      case vlcfg::RxState::COMPLETED: s = "CMPL"; break;
-      case vlcfg::RxState::ERROR: s = "ERR"; break;
-      default: s = "(unk)"; break;
+      const char *s;
+      switch (rx_state) {
+        case vlcfg::RxState::IDLE: s = "IDLE"; break;
+        case vlcfg::RxState::RECEIVING: s = "RECV"; break;
+        case vlcfg::RxState::COMPLETED: s = "CMPL"; break;
+        case vlcfg::RxState::ERROR: s = "ERR"; break;
+        default: s = "(unk)"; break;
+      }
+      ssd1306::font6x11.drawStringTo(work_screen, s, 80, y, true);
     }
-    ssd1306::font6x11.drawStringTo(work_screen, s, 80, 0, true);
-  }
 
-  // Last Error Code
-  {
-    char buff[8];
-    snprintf(buff, sizeof(buff), "%1d", static_cast<int>(rx_last_error));
-    ssd1306::font6x11.drawStringTo(work_screen, buff, 114, 0, true);
+    // Last Error Code
+    {
+      char buff[8];
+      snprintf(buff, sizeof(buff), "%1d", static_cast<int>(rx_last_error));
+      ssd1306::font6x11.drawStringTo(work_screen, buff, 114, y, true);
+    }
   }
 
   // Rx Log
   {
+    int y = DISPLAY_HEIGHT - TEXT_HEIGHT;
     rx_log[RX_LOG_SIZE - 1] = '\0';
-    ssd1306::font6x11.drawStringTo(work_screen, rx_log, 0, 12, true);
-  }
-
-  // Graph
-  for (int x = 0; x < DISPLAY_WIDTH; x++) {
-    int h = 1 + (adc_log[x] - min) * (64 - 24) / range;
-    int y = DISPLAY_HEIGHT - h;
-    work_screen.fillRect(x, y, 1, h, true);
+    ssd1306::font6x11.drawStringTo(work_screen, rx_log, 0, y, true);
   }
 }
 

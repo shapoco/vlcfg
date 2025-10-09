@@ -1,8 +1,8 @@
 #include <hardware/clocks.h>
 
+#include "button.hpp"
 #include "monitor.hpp"
 #include "vlcfg_test.hpp"
-#include "button.hpp"
 
 const char *KEY_TEXT = "t";
 const char *KEY_PASS = "p";
@@ -12,14 +12,13 @@ const char *KEY_LED_ON = "l";
 char text_buff[32 + 1];
 char pass_buff[32 + 1];
 int32_t number_buff;
-uint8_t ip_addr_buff[6];
+uint8_t ip_buff[6];
 uint8_t bool_buff;
 vlcfg::ConfigEntry configEntries[] = {
     {KEY_TEXT, text_buff, vlcfg::ValueType::TEXT_STR, sizeof(text_buff)},
     {KEY_PASS, pass_buff, vlcfg::ValueType::TEXT_STR, sizeof(pass_buff)},
     {KEY_NUMBER, &number_buff, vlcfg::ValueType::INT, sizeof(number_buff)},
-    {KEY_IP_ADDR, ip_addr_buff, vlcfg::ValueType::BYTE_STR,
-     sizeof(ip_addr_buff)},
+    {KEY_IP_ADDR, ip_buff, vlcfg::ValueType::BYTE_STR, sizeof(ip_buff)},
     {KEY_LED_ON, &bool_buff, vlcfg::ValueType::BOOLEAN, sizeof(bool_buff)},
     {nullptr, nullptr, vlcfg::ValueType::NONE, 0},  // terminator
 };
@@ -49,6 +48,10 @@ void core0_main() {
   adc_init();
   adc_gpio_init(OPT_SENSOR_PORT);
   adc_select_input(OPT_SENSOR_ADC_CH);
+
+  gpio_init(LED_PORT);
+  gpio_set_dir(LED_PORT, GPIO_OUT);
+  gpio_put(LED_PORT, false);
 
   receiver.init(configEntries);
 
@@ -111,7 +114,7 @@ void on_received() {
   e = receiver.entry_from_key(KEY_NUMBER);
   printf("Number: ");
   if (e->was_received()) {
-    printf("%d\r\n", number_buff);
+    printf("%d\r\n", (int)number_buff);
   } else {
     printf("(none)\r\n");
   }
@@ -119,8 +122,8 @@ void on_received() {
   e = receiver.entry_from_key(KEY_IP_ADDR);
   printf("IP Addr: ");
   if (e->was_received()) {
-    printf("%d.%d.%d.%d\r\n", (int)ip_addr_buff[0], (int)ip_addr_buff[1],
-           (int)ip_addr_buff[2], (int)ip_addr_buff[3]);
+    printf("%d.%d.%d.%d\r\n", (int)ip_buff[0], (int)ip_buff[1], (int)ip_buff[2],
+           (int)ip_buff[3]);
   } else {
     printf("(none)\r\n");
   }
@@ -130,7 +133,7 @@ void on_received() {
   if (e->was_received()) {
     bool led_on = (bool_buff != 0);
     printf(led_on ? "true\r\n" : "false\r\n");
-    // digitalWrite(LED_PIN, led_on ? HIGH : LOW);
+    gpio_put(LED_PORT, led_on);
   } else {
     printf("(none)\r\n");
   }

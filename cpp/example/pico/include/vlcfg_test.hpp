@@ -24,4 +24,6 @@ static constexpr int DISPLAY_ROWS = (DISPLAY_HEIGHT + 7) / 8;
 static constexpr int MONITOR_BUTTON_PORT = 20;
 static constexpr int RESTART_BUTTON_PORT = 21;
 
+static constexpr int LED_PORT = 22;
+
 extern vlcfg::ConfigEntry configEntries[];

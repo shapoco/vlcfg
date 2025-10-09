@@ -1,14 +1,20 @@
 # [WIP] VLConfig
 
-![](./img/cover.gif)
-
 Protocol and library implementation for sending configuration information by flashing the screen of a PC or smartphone to devices that do not have a rich input interface.
 
 リッチな入力インタフェースを持たないデバイスに対し、PC やスマートフォンの画面の点滅によって設定情報を送信するためのプロトコルおよびライブラリ実装です。
 
-# For Arduino
+# For Arduino Platform
 
-See [VLConfig for Arduino](https://github.com/shapoco/vlconfig-arduino).
+See [VLConfig for Arduino Platform](https://github.com/shapoco/vlconfig-arduino).
+
+# Demo (Raspberry Pi Pico)
+
+See [Demo Program](cpp/example/pico)
+
+## Video (YouTube)
+
+[![Demo Video](./cpp/example/pico/img/demo_video_thumbnail.jpg)](https://youtu.be/GITFharvHWY)
 
 # Transmitter
 
@@ -35,20 +41,6 @@ If a digital input is used, a DC offset detector and comparator are required.
 See [Library Code](cpp/lib).
 
 ![](./img/receiver_flowchart.svg)
-
-## Demo (Raspberry Pi Pico 2 W)
-
-See [Demo Program](cpp/example/pico)
-
-### Connection
-
-|Pico2W|Connection|
-|:--|:--|
-|GPIO18 (I2C1 SDA)|SSD1306|
-|GPIO19 (I2C1 SCL)|SSD1306|
-|GPIO20|Monitor Select Switch|
-|GPIO21|Restart Switch|
-|GPIO28 (ADC2)|Optical Sensor|
 
 # Protocol
 
