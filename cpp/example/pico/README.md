@@ -16,6 +16,7 @@
 |GPIO19 (I2C1 SCL)|SSD1306|
 |GPIO20|Mode Switch|
 |GPIO21|Restart Switch|
+|GPIO22|LED|
 |GPIO28 (ADC2)|Optical Sensor|
 
 ## Transmitter
