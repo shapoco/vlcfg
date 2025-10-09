@@ -29,6 +29,7 @@ class RxDecoder {
   inline ConfigEntry* entry_from_key(const char* key) const {
     return vlcfg::entry_from_key(entries, key);
   }
+  inline uint16_t get_received_size() const { return buff.stored_size(); }
 
  private:
   Result update_state(PcsOutput* in);
@@ -95,7 +96,7 @@ Result RxDecoder::update_state(PcsOutput* in) {
 }
 
 Result RxDecoder::rx_complete() {
-  VLCFG_PRINTF("%d bytes received.\n", (int)buff.size());
+  VLCFG_PRINTF("%d bytes received.\n", (int)buff.queued_size());
   // #ifdef VLCFG_DEBUG
   //   VLCFG_PRINTF("buffer content:\n");
   //   for (uint16_t i = 0; i < buff.size(); i++) {
@@ -132,7 +133,7 @@ Result RxDecoder::rx_complete() {
     VLCFG_TRY(read_value(&entry));
   }
 
-  if (buff.size() != 0) {
+  if (buff.queued_size() != 0) {
     VLCFG_THROW(Result::ERR_EXTRA_BYTES);
   }
 

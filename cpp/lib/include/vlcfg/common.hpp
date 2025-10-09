@@ -94,11 +94,12 @@ static constexpr uint32_t RX_SAMPLE_PERIOD_US =
 static constexpr uint8_t MAX_ENTRY_COUNT = 32;
 static constexpr uint8_t MAX_KEY_LEN = 16;
 
-static constexpr int16_t SYMBOL_CONTROL = -1;
-static constexpr int16_t SYMBOL_SYNC = -2;
-static constexpr int16_t SYMBOL_SOF = -3;
-static constexpr int16_t SYMBOL_EOF = -4;
-static constexpr int16_t SYMBOL_INVALID = -16;
+static constexpr int8_t SYMBOL_CTRL = -1;
+static constexpr int8_t SYMBOL_SYNC = -2;
+static constexpr int8_t SYMBOL_SOF = -3;
+static constexpr int8_t SYMBOL_EOF = -4;
+static constexpr int8_t SYMBOL_NONE = -16;
+static constexpr int8_t SYMBOL_INVALID = -17;
 
 enum class PcsState : uint8_t {
   LOS,
@@ -171,8 +172,8 @@ struct ConfigEntry {
   void* buffer;
   ValueType type;
   uint8_t capacity;
-  uint8_t received;
-  uint8_t flags;
+  uint8_t flags = 0;
+  uint8_t received = 0;
 
   inline bool was_received() const { return (flags & ENTRY_RECEIVED) != 0; }
 };

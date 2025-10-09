@@ -20,6 +20,7 @@ add_executable(${APP_NAME})
 target_compile_options(${APP_NAME} PUBLIC -O2 -Wall)
 
 add_subdirectory(${VLCFG_DIR} vlcfg)
+target_compile_definitions(vlcfg PUBLIC VLCFG_DEBUG)
 
 file(GLOB CPP_FILES
     ${APP_SRC_DIR}/*.cpp

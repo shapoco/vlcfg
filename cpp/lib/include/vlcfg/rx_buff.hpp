@@ -21,7 +21,8 @@ class RxBuff {
     read_pos = 0;
   }
 
-  inline uint16_t size() const { return write_pos - read_pos; }
+  inline uint16_t queued_size() const { return write_pos - read_pos; }
+  inline uint16_t stored_size() const { return write_pos; }
 
   inline const uint8_t &operator[](uint16_t index) const { return buff[index]; }
 
@@ -41,7 +42,7 @@ class RxBuff {
   }
 
   inline Result popBytes(uint8_t *out, uint16_t len) {
-    if (size() < len) {
+    if (queued_size() < len) {
       VLCFG_THROW(Result::ERR_UNEXPECTED_EOF);
     }
     if (out == nullptr) {
@@ -54,7 +55,7 @@ class RxBuff {
   }
 
   inline Result skip(uint16_t len) {
-    if (size() < len) {
+    if (queued_size() < len) {
       VLCFG_THROW(Result::ERR_UNEXPECTED_EOF);
     }
     read_pos += len;

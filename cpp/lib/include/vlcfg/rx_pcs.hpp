@@ -12,6 +12,10 @@ class RxPcs {
   uint8_t phase;
 
  public:
+#ifdef VLCFG_DEBUG
+  int8_t dbg_rxed_symbol;
+#endif
+
   inline RxPcs() { init(); }
   void init();
   Result update(const CdrOutput *in, PcsOutput *out);
@@ -34,7 +38,7 @@ static const int8_t DECODE_TABLE[1 << SYMBOL_BITS] = {
     SYMBOL_EOF,      // 0b00111
     SYMBOL_INVALID,  // 0b01000
     0x2,             // 0b01001
-    SYMBOL_CONTROL,  // 0b01010
+    SYMBOL_CTRL,     // 0b01010
     0x3,             // 0b01011
     0x4,             // 0b01100
     0x5,             // 0b01101
@@ -64,6 +68,10 @@ void RxPcs::init() {
 }
 
 Result RxPcs::update(const CdrOutput *in, PcsOutput *out) {
+#ifdef VLCFG_DEBUG
+  dbg_rxed_symbol = SYMBOL_NONE;
+#endif
+
   if (out == nullptr) {
     VLCFG_THROW(Result::ERR_NULL_POINTER);
   }
@@ -88,11 +96,17 @@ Result RxPcs::update(const CdrOutput *in, PcsOutput *out) {
   int8_t nibble_h = DECODE_TABLE[(shift_reg >> SYMBOL_BITS) & SYMBOL_MASK];
   int8_t nibble_l = DECODE_TABLE[shift_reg & SYMBOL_MASK];
   bool rxed_sync = false, rxed_sof = false, rxed_eof = false;
-  if (nibble_h == SYMBOL_CONTROL) {
+  if (nibble_h == SYMBOL_CTRL) {
     rxed_sync = (nibble_l == SYMBOL_SYNC);
     rxed_sof = (nibble_l == SYMBOL_SOF);
     rxed_eof = (nibble_l == SYMBOL_EOF);
   }
+
+#ifdef VLCFG_DEBUG
+  if ((state == PcsState::LOS) || (phase == SYMBOL_BITS - 1) || (phase == SYMBOL_BITS * 2 - 1)) {
+    dbg_rxed_symbol = nibble_l;
+  }
+#endif
 
   bool rxed = false;
   PcsState last_state = state;
@@ -177,6 +191,9 @@ void RxPcs::reset_internal() {
   state = PcsState::LOS;
   phase = 0;
   shift_reg = 0;
+#ifdef VLCFG_DEBUG
+  dbg_rxed_symbol = SYMBOL_NONE;
+#endif
 }
 
 #endif

@@ -44,12 +44,10 @@ See [Demo Program](cpp/example/pico)
 
 |Pico2W|Connection|
 |:--|:--|
-|GPIO16 (I2C0 SDA)|EEPROM|
-|GPIO17 (I2C0 SCL)|EEPROM|
 |GPIO18 (I2C1 SDA)|SSD1306|
 |GPIO19 (I2C1 SCL)|SSD1306|
-|GPIO20|User Switch 0|
-|GPIO21|User Switch 1|
+|GPIO20|Monitor Select|
+|GPIO21|Restart Switch|
 |GPIO28 (ADC2)|Optical Sensor|
 
 # Protocol
