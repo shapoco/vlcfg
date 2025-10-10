@@ -21,4 +21,4 @@
 
 ## Transmitter
 
-See [Demo Program](cpp/example/pico)
+See [Demo Page](https://shapoco.github.io/vlconfig/).

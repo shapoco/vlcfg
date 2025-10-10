@@ -448,7 +448,6 @@ const vlcfg = (function () {
   }
 
   /**
-   *
    * @param {string | Node | Array<string | Node> | null} children
    * @param {boolean} center
    * @returns {HTMLParagraphElement}

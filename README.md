@@ -18,7 +18,7 @@ See [Demo Program](cpp/example/pico)
 
 # Transmitter
 
-See [Demo Page](https://shapoco.github.io/vlconfig/demo/).
+See [Demo Page](https://shapoco.github.io/vlconfig/).
 
 # Receiver
 
