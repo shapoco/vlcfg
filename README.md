@@ -20,6 +20,10 @@ See [Demo Program](cpp/example/pico)
 
 See [Demo Page](https://shapoco.github.io/vlconfig/#demo).
 
+You can make your-own form using URL hash.
+
+example: [https://shapoco.github.io/vlconfig/#form:{%22t%22:%22WiFi%20Setup%22,%22e%22:[{%22k%22:%22s%22,%22t%22:%22t%22,%22l%22:%22SSID%22},{%22k%22:%22p%22,%22t%22:%22p%22,%22l%22:%22Password%22}]}](https://shapoco.github.io/vlconfig/#form:{%22t%22:%22WiFi%20Setup%22,%22e%22:[{%22k%22:%22s%22,%22t%22:%22t%22,%22l%22:%22SSID%22},{%22k%22:%22p%22,%22t%22:%22p%22,%22l%22:%22Password%22}]})
+
 # Receiver
 
 ## Input Circuit
