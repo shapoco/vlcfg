@@ -40,7 +40,7 @@ export function makeFromUrlHash(hash) {
   if (!hash.startsWith("form:")) {
     throw new Error("Invalid hash format: '" + hash + "'");
   }
-  const formJson = JSON.parse(hash.substring(5));
+  const formJson = ShortenJSON.parse(hash.substring(5));
 
   replaceKey(formJson, 't', 'title');
   replaceKey(formJson, 'e', 'entries');
@@ -621,7 +621,75 @@ function getLabel(key) {
   return LABELS[key][lang];
 }
 
+class ShortenJSON {
+  /**
+   * @param {string} str 
+   * @returns {any}
+   */
+  static parse(str) {
+    const reader = new StringReader(str);
+    return ShortenJSON.parseValue(reader);
+  }
+
+  /** 
+   * @param {StringReader} reader 
+   * @returns {any}
+   */
+  static parseValue(reader) {
+    let ret = null;
+    if (reader.readIfMatch('{')) {
+      return ShortenJSON.parseObjectFollowing(reader);
+    }
+    else if (reader.readIfMatch('[')) {
+      return ShortenJSON.parseArrayFollowing(reader);
+    }
+    else if ((ret = reader.readIfNumber()) !== null) {
+      return ret;
+    }
+    else if ((ret = reader.readIfBoolean()) !== null) {
+      return ret;
+    }
+    else if ((ret = reader.readIfString()) !== null) {
+      return ret;
+    }
+  }
+
+  /** 
+   * @param {StringReader} reader 
+   * @returns {Object}
+   */
+  static parseObjectFollowing(reader) {
+    const obj = {};
+    while (!reader.readIfMatch('}')) {
+      const key = reader.readString();
+      reader.expect(':');
+      const value = ShortenJSON.parseValue(reader);
+      obj[key] = value;
+      if (reader.readIfMatch('}')) break;
+      reader.expect(',');
+    }
+    return obj;
+  }
+
+  /** 
+   * @param {StringReader} reader 
+   * @returns {Array}
+   */
+  static parseArrayFollowing(reader) {
+    const arr = [];
+    while (!reader.readIfMatch(']')) {
+      arr.push(ShortenJSON.parseValue(reader));
+      if (reader.readIfMatch(']')) break;
+      reader.expect(',');
+    }
+    return arr;
+  }
+}
+
 class StringReader {
+  static RE_CHARS_TO_BE_QUOTED = /[\{\}\[\]:,\\]/;
+  static KEYWORDS = ['true', 'false', 'null'];
+
   constructor(str) {
     this.str = str;
     this.pos = 0;
@@ -643,6 +711,13 @@ class StringReader {
     return s;
   }
 
+  back(length = 1) {
+    this.pos -= length;
+    if (this.pos < 0) {
+      throw new Error("Position out of range");
+    }
+  }
+
   readIfMatch(s) {
     const len = s.length;
     if (this.peek(len) === s) {
@@ -650,24 +725,6 @@ class StringReader {
       return true;
     }
     return false;
-  }
-
-  readIfIdentifier() {
-    const first = this.peek();
-    if (first === null || !/[A-Za-z_]/.test(first)) {
-      return null;
-    }
-    let id = this.read();
-    while (true) {
-      const ch = this.peek();
-      if (ch !== null && /[A-Za-z0-9_]/.test(ch)) {
-        id += this.read();
-      }
-      else {
-        break;
-      }
-    }
-    return id;
   }
 
   readDecimalString() {
@@ -728,11 +785,106 @@ class StringReader {
     return id;
   }
 
-  readKeyword(s) {
+  expect(s) {
     if (this.readIfMatch(s)) {
       return;
     }
     throw new Error(`Keyword "${s}" expected`);
+  }
+
+  readStringChar(quotation) {
+    const ch = this.peek();
+    if (quotation && ch === quotation) {
+      return null;
+    }
+    else if (!quotation && StringReader.RE_CHARS_TO_BE_QUOTED.test(ch)) {
+      return null;
+    }
+    else if (ch === '\\') {
+      this.read();
+      const esc = this.read();
+      switch (esc) {
+        case '"': str += '"'; break;
+        case '\\': str += '\\'; break;
+        case '/': str += '/'; break;
+        case 'b': str += '\b'; break;
+        case 'f': str += '\f'; break;
+        case 'n': str += '\n'; break;
+        case 'r': str += '\r'; break;
+        case 't': str += '\t'; break;
+        case 'u':
+          let hex = "";
+          for (let i = 0; i < 4; i++) {
+            const h = this.read();
+            if (!/[0-9a-fA-F]/.test(h)) {
+              throw new Error("Invalid Unicode escape");
+            }
+            hex += h;
+          }
+          return String.fromCharCode(parseInt(hex, 16));
+        default:
+          throw new Error("Invalid escape character");
+      }
+    }
+    else {
+      return this.read();
+    }
+  }
+
+  readIfString() {
+    const next = this.peek();
+
+    if (next === '"' || next === "'") {
+      const quotation = this.read();
+      let str = "";
+      while (true) {
+        const ch = this.readStringChar(quotation);
+        if (ch === null) {
+          break;
+        }
+        str += ch;
+      }
+      this.expect(quotation);
+      return str;
+    }
+
+    if (next && !StringReader.RE_CHARS_TO_BE_QUOTED.test(next) || !/[0-9]/.test(next)) {
+      let str = "";
+      while (true) {
+        const ch = this.readStringChar(null);
+        if (ch === null) {
+          break;
+        }
+        str += ch;
+      }
+
+      if (StringReader.KEYWORDS.includes(str)) {
+        this.back(str.length);
+        return null;
+      }
+
+      return str;
+    }
+
+    return null;
+  }
+
+  readString() {
+    const str = this.readIfString();
+    if (str === null) {
+      throw new Error("String expected");
+    }
+    return str;
+  }
+
+  readIfBoolean() {
+    if (this.readIfMatch('true')) {
+      return true;
+    }
+    if (this.readIfMatch('false')) {
+      return false;
+    }
+    return null;
   }
 
   eof() {
