@@ -43,9 +43,29 @@ If a digital input is used, a DC offset detector and comparator are required.
 
 ## Decoder Library
 
-See [Library Code](cpp/lib).
+The reception process is implemented as a library. This library itself is not dependent on a specific platform, but the ADC input process and sampling timing must be guaranteed by the user.
+
+### How to use
 
 ![](./img/receiver_flowchart.svg)
+
+1. Define the configuration item list as an array of `vlcfg::ConfigEntry`, with the last element of the array being zero-padded to indicate the end of the array.
+
+2. Instantiate `vlcfg::Receiver`, passing buffer size for the CBOR object as a constructor argument.
+
+3. Call `vlcfg::Receiver::init()` to start receiving.
+
+4. Get the ADC value as accurately as possible at 10ms intervals and call `vlcfg::Receiver::update()`.
+
+    When using digital input, convert the digital value to an analog value of appropriate amplitude and provide it as the argument (e.g. Low=0, High=2048).
+    
+    Reception is complete when `rx_state` becomes `vlcfg::RxState::COMPLETED`. Reception failed when `rx_state` becomes `vlcfg::RxState::ERROR` or the return value is anything other than `vlcfg::Result::SUCCESS`.
+
+5. The received data will be stored in the buffer variable specified in the configuration item list.
+
+    Items left blank in the input form will not be sent. You can determine whether an item has been sent using the `vlcfg::ConfigEntry::was_received()` method.
+
+See [Library Code](cpp/lib) for details.
 
 # Protocol
 
