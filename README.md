@@ -87,7 +87,7 @@ Key/Value pairs are encoded as a subset of [CBOR](https://www.rfc-editor.org/rfc
 
 `CTRL` and `SYNC` are sent alternately between frames.
 
-## Byte Encoding
+## Symbol Encoding
 
 First the most significant 4 bits of the original byte are encoded to a symbol, followed by the least significant 4 bits.
 
