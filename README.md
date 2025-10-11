@@ -1,4 +1,5 @@
-# [WIP] VLConfig
+<p align="center"><img src="./docs/img/logo.svg" width="150"></p>
+<h1 align="center">[WIP] VLConfig</h1>
 
 Protocol and library implementation for sending configuration information by flashing the screen of a PC or smartphone to devices that do not have a rich input interface.
 
